@@ -1,14 +1,19 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
-import { Mic } from 'lucide-react';
+import { Mic, Flame } from 'lucide-react';
 
 interface PracticePulseProps {
   isActive?: boolean;
   streakDays: number;
+  sessionsThisWeek?: number;
 }
 
-const PracticePulse: React.FC<PracticePulseProps> = ({ isActive = false, streakDays }) => {
+const PracticePulse: React.FC<PracticePulseProps> = ({ 
+  isActive = false, 
+  streakDays,
+  sessionsThisWeek = 0 
+}) => {
   const { intensity } = useMotion();
 
   return (
@@ -27,29 +32,33 @@ const PracticePulse: React.FC<PracticePulseProps> = ({ isActive = false, streakD
         
         {/* Main orb */}
         <div className={cn(
-          "w-20 h-20 rounded-full flex items-center justify-center relative",
+          "w-16 h-16 rounded-full flex items-center justify-center relative",
           "bg-gradient-to-br from-accent/20 to-primary/20",
           "border border-accent/30",
           isActive && intensity !== 'off' && 'pulse-orb'
         )}>
           <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center",
+            "w-10 h-10 rounded-full flex items-center justify-center",
             "bg-gradient-to-br from-accent to-primary",
             isActive && "glow-accent"
           )}>
-            <Mic className="w-6 h-6 text-accent-foreground" />
+            <Mic className="w-5 h-5 text-accent-foreground" />
           </div>
         </div>
       </div>
 
-      {/* Streak info */}
-      <div className="text-center">
-        <div className="flex items-center gap-1 justify-center">
-          <span className="text-2xl font-display font-bold text-foreground">{streakDays}</span>
+      {/* Stats */}
+      <div className="text-center w-full">
+        <div className="flex items-center justify-center gap-1">
+          <Flame className={cn(
+            "w-4 h-4",
+            streakDays > 0 ? "text-warning" : "text-muted-foreground"
+          )} />
+          <span className="text-xl font-display font-bold text-foreground">{streakDays}</span>
           <span className="text-sm text-muted-foreground">day streak</span>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          {isActive ? 'Session in progress...' : 'Keep practicing!'}
+          {sessionsThisWeek} sessions this week
         </p>
       </div>
     </div>
