@@ -9,6 +9,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import JobTracker from "./pages/JobTracker";
+import JobDetail from "./pages/JobDetail";
 import ResumeWorkspace from "./pages/ResumeWorkspace";
 import InterviewPractice from "./pages/InterviewPractice";
 import StoryBank from "./pages/StoryBank";
@@ -28,47 +29,17 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Auth route - no layout */}
               <Route path="/auth" element={<AuthPage />} />
               
-              {/* Protected routes with layout */}
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <AppLayout><Dashboard /></AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/jobs" element={
-                <ProtectedRoute>
-                  <AppLayout><JobTracker /></AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/resume" element={
-                <ProtectedRoute>
-                  <AppLayout><ResumeWorkspace /></AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/interview" element={
-                <ProtectedRoute>
-                  <AppLayout><InterviewPractice /></AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/stories" element={
-                <ProtectedRoute>
-                  <AppLayout><StoryBank /></AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <AppLayout><ProfileHub /></AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <AppLayout><SettingsPage /></AppLayout>
-                </ProtectedRoute>
-              } />
+              <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+              <Route path="/jobs" element={<ProtectedRoute><AppLayout><JobTracker /></AppLayout></ProtectedRoute>} />
+              <Route path="/jobs/:jobId" element={<ProtectedRoute><AppLayout><JobDetail /></AppLayout></ProtectedRoute>} />
+              <Route path="/resume" element={<ProtectedRoute><AppLayout><ResumeWorkspace /></AppLayout></ProtectedRoute>} />
+              <Route path="/interview" element={<ProtectedRoute><AppLayout><InterviewPractice /></AppLayout></ProtectedRoute>} />
+              <Route path="/stories" element={<ProtectedRoute><AppLayout><StoryBank /></AppLayout></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfileHub /></AppLayout></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
               
-              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

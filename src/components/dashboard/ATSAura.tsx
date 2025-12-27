@@ -3,78 +3,83 @@ import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
 
 interface ATSAuraProps {
-  score: number; // 0-100
+  score: number | null;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
+  name?: string;
 }
 
-const ATSAura: React.FC<ATSAuraProps> = ({ score, size = 'md', showLabel = true }) => {
+const ATSAura: React.FC<ATSAuraProps> = ({ score, size = 'md', showLabel = true, name }) => {
   const { intensity } = useMotion();
+  const displayScore = score ?? 0;
   
   const sizeClasses = {
-    sm: 'w-16 h-16',
-    md: 'w-24 h-24',
-    lg: 'w-32 h-32'
+    sm: 'w-14 h-14',
+    md: 'w-20 h-20',
+    lg: 'w-28 h-28'
+  };
+
+  const textSizes = {
+    sm: 'text-sm',
+    md: 'text-xl',
+    lg: 'text-2xl'
   };
 
   const getScoreColor = () => {
-    if (score >= 80) return 'from-success via-accent to-success';
-    if (score >= 60) return 'from-accent via-primary to-accent';
-    if (score >= 40) return 'from-primary via-warning to-primary';
-    return 'from-warning via-destructive to-warning';
-  };
-
-  const getGlowColor = () => {
-    if (score >= 80) return 'hsl(var(--success))';
-    if (score >= 60) return 'hsl(var(--accent))';
-    if (score >= 40) return 'hsl(var(--primary))';
+    if (displayScore >= 80) return 'hsl(var(--success))';
+    if (displayScore >= 60) return 'hsl(var(--accent))';
+    if (displayScore >= 40) return 'hsl(var(--primary))';
     return 'hsl(var(--warning))';
   };
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-1.5">
       <div className={cn("relative", sizeClasses[size])}>
-        {/* Outer glow ring */}
+        {/* Outer glow */}
         <div 
           className={cn(
             "absolute inset-0 rounded-full opacity-30 blur-md",
-            intensity === 'magical' && 'animate-pulse-glow'
+            intensity === 'magical' && 'animate-pulse'
           )}
-          style={{ 
-            background: `conic-gradient(${getGlowColor()}, transparent, ${getGlowColor()})`,
-          }}
+          style={{ background: getScoreColor() }}
         />
         
-        {/* Rotating gradient ring */}
-        <div 
-          className={cn(
-            "absolute inset-0 rounded-full",
-            intensity === 'magical' && 'animate-rotate-slow'
-          )}
-          style={{
-            background: `conic-gradient(from 0deg, ${getGlowColor()}, transparent 30%, ${getGlowColor()} 50%, transparent 80%, ${getGlowColor()})`,
-            opacity: 0.6
-          }}
-        />
+        {/* Ring */}
+        <svg className="absolute inset-0 w-full h-full -rotate-90">
+          <circle
+            cx="50%"
+            cy="50%"
+            r="45%"
+            fill="none"
+            stroke="hsl(var(--muted))"
+            strokeWidth="4"
+          />
+          <circle
+            cx="50%"
+            cy="50%"
+            r="45%"
+            fill="none"
+            stroke={getScoreColor()}
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={`${(displayScore / 100) * 283} 283`}
+            className="transition-all duration-700"
+          />
+        </svg>
         
-        {/* Inner circle */}
-        <div className="absolute inset-2 rounded-full bg-card flex items-center justify-center border border-border/50">
-          <div className="text-center">
-            <span className={cn(
-              "font-display font-bold text-glow",
-              size === 'sm' && 'text-lg',
-              size === 'md' && 'text-2xl',
-              size === 'lg' && 'text-3xl'
-            )} style={{ color: getGlowColor() }}>
-              {score}
-            </span>
-            <span className="text-xs text-muted-foreground block">%</span>
-          </div>
+        {/* Center */}
+        <div className="absolute inset-2 rounded-full bg-card flex items-center justify-center">
+          <span className={cn("font-display font-bold", textSizes[size])} style={{ color: getScoreColor() }}>
+            {displayScore}
+          </span>
         </div>
       </div>
       
       {showLabel && (
-        <span className="text-xs font-medium text-muted-foreground">ATS Readiness</span>
+        <div className="text-center">
+          {name && <p className="text-xs font-medium text-foreground truncate max-w-[100px]">{name}</p>}
+          <span className="text-xs text-muted-foreground">ATS Score</span>
+        </div>
       )}
     </div>
   );
