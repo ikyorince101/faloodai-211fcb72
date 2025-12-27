@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MotionProvider } from "@/contexts/MotionContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import JobTracker from "./pages/JobTracker";
 import ResumeWorkspace from "./pages/ResumeWorkspace";
@@ -12,6 +14,7 @@ import InterviewPractice from "./pages/InterviewPractice";
 import StoryBank from "./pages/StoryBank";
 import ProfileHub from "./pages/ProfileHub";
 import SettingsPage from "./pages/Settings";
+import AuthPage from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,22 +23,56 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <MotionProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppLayout>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/jobs" element={<JobTracker />} />
-              <Route path="/resume" element={<ResumeWorkspace />} />
-              <Route path="/interview" element={<InterviewPractice />} />
-              <Route path="/stories" element={<StoryBank />} />
-              <Route path="/profile" element={<ProfileHub />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              {/* Auth route - no layout */}
+              <Route path="/auth" element={<AuthPage />} />
+              
+              {/* Protected routes with layout */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <AppLayout><Dashboard /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/jobs" element={
+                <ProtectedRoute>
+                  <AppLayout><JobTracker /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/resume" element={
+                <ProtectedRoute>
+                  <AppLayout><ResumeWorkspace /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/interview" element={
+                <ProtectedRoute>
+                  <AppLayout><InterviewPractice /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/stories" element={
+                <ProtectedRoute>
+                  <AppLayout><StoryBank /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <AppLayout><ProfileHub /></AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <AppLayout><SettingsPage /></AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </AppLayout>
-        </BrowserRouter>
+          </BrowserRouter>
+        </AuthProvider>
       </MotionProvider>
     </TooltipProvider>
   </QueryClientProvider>

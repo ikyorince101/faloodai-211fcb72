@@ -8,72 +8,60 @@ import {
   BookOpen, 
   User,
   Sparkles,
-  Settings
+  Settings,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
 
 const navItems = [
-  { 
-    path: '/', 
-    icon: LayoutDashboard, 
-    label: 'Dashboard',
-    description: 'Your command center'
-  },
-  { 
-    path: '/jobs', 
-    icon: Briefcase, 
-    label: 'Job Tracker',
-    description: 'Pipeline & interviews'
-  },
-  { 
-    path: '/resume', 
-    icon: FileText, 
-    label: 'Resume Workspace',
-    description: 'ATS-optimized versions'
-  },
-  { 
-    path: '/interview', 
-    icon: Mic, 
-    label: 'Interview Practice',
-    description: 'Mock voice sessions'
-  },
-  { 
-    path: '/stories', 
-    icon: BookOpen, 
-    label: 'Story Bank',
-    description: 'STAR stories'
-  },
-  { 
-    path: '/profile', 
-    icon: User, 
-    label: 'Profile Hub',
-    description: 'Your work history'
-  },
+  { path: '/', icon: LayoutDashboard, label: 'Dashboard', description: 'Your command center' },
+  { path: '/jobs', icon: Briefcase, label: 'Job Tracker', description: 'Pipeline & interviews' },
+  { path: '/resume', icon: FileText, label: 'Resume Workspace', description: 'ATS-optimized versions' },
+  { path: '/interview', icon: Mic, label: 'Interview Practice', description: 'Mock voice sessions' },
+  { path: '/stories', icon: BookOpen, label: 'Story Bank', description: 'STAR stories' },
+  { path: '/profile', icon: User, label: 'Profile Hub', description: 'Your work history' },
 ];
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
   const location = useLocation();
   const { intensity } = useMotion();
 
-  return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col z-50">
+  const sidebarContent = (
+    <div className="h-full flex flex-col bg-sidebar">
       {/* Logo */}
-      <div className="p-6 flex items-center gap-3">
-        <div className="relative">
-          <div className="w-10 h-10 rounded-xl bg-gradient-aurora flex items-center justify-center glow-primary">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+      <div className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-primary">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            {intensity === 'magical' && (
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary to-accent opacity-50 blur-lg animate-pulse" />
+            )}
           </div>
-          {intensity === 'magical' && (
-            <div className="absolute inset-0 rounded-xl bg-gradient-aurora opacity-50 blur-lg animate-pulse-glow" />
-          )}
+          <div>
+            <h1 className="font-display font-bold text-xl text-foreground tracking-tight">
+              FaloodAI
+            </h1>
+            <p className="text-xs text-muted-foreground">Career Performance</p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-display font-bold text-xl text-foreground tracking-tight">
-            FaloodAI
-          </h1>
-          <p className="text-xs text-muted-foreground">Career Performance</p>
-        </div>
+        
+        {/* Mobile close button */}
+        {onMobileClose && (
+          <button
+            onClick={onMobileClose}
+            className="lg:hidden p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+          >
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -86,6 +74,7 @@ const Sidebar: React.FC = () => {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onMobileClose}
               className={cn(
                 "group flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300",
                 "hover:bg-sidebar-accent/50",
@@ -126,6 +115,7 @@ const Sidebar: React.FC = () => {
       <div className="p-3 border-t border-sidebar-border">
         <NavLink
           to="/settings"
+          onClick={onMobileClose}
           className={cn(
             "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300",
             "hover:bg-sidebar-accent/50",
@@ -143,7 +133,29 @@ const Sidebar: React.FC = () => {
           <span className="text-sm font-medium text-sidebar-foreground">Settings</span>
         </NavLink>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 border-r border-sidebar-border z-50">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer */}
+      {isMobileOpen && (
+        <>
+          <div 
+            className="lg:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+            onClick={onMobileClose}
+          />
+          <aside className="lg:hidden fixed left-0 top-0 h-screen w-72 z-50 animate-slide-in-left border-r border-sidebar-border">
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+    </>
   );
 };
 
