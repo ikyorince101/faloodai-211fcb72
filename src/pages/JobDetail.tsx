@@ -1,18 +1,25 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useJobWithArtifacts, useUpdateJob, useDeleteJob, JobStage } from '@/hooks/useJobs';
-import { useCreateRound, useUpdateRound, useDeleteRound } from '@/hooks/useInterviews';
+import { useCreateRound } from '@/hooks/useInterviews';
 import { useCreateSession } from '@/hooks/usePractice';
 import { useMotion } from '@/contexts/MotionContext';
 import ATSAura from '@/components/dashboard/ATSAura';
+import InterviewRoundCard from '@/components/job/InterviewRoundCard';
 import { cn } from '@/lib/utils';
 import { 
   ArrowLeft, Briefcase, FileText, MessageSquare, Mic, 
-  Calendar, Clock, ExternalLink, Edit2, Trash2, Plus,
-  Check, X, ChevronRight, AlertCircle
+  Calendar, Clock, ExternalLink, Trash2, Plus,
+  AlertCircle, Sparkles, Loader2
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 const stages: JobStage[] = ['saved', 'applied', 'screening', 'phone_screen', 'technical', 'onsite', 'final', 'offer', 'accepted', 'rejected', 'withdrawn'];
 
@@ -32,6 +39,14 @@ const JobDetail: React.FC = () => {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
+
+  // Interview round creation
+  const [showAddRound, setShowAddRound] = useState(false);
+  const [newRoundName, setNewRoundName] = useState('');
+  const [newRoundDate, setNewRoundDate] = useState('');
+
+  // Prep plan generation
+  const [generatingPrepPlan, setGeneratingPrepPlan] = useState(false);
 
   React.useEffect(() => {
     if (data?.job) {
@@ -100,14 +115,73 @@ const JobDetail: React.FC = () => {
   };
 
   const handleAddRound = async () => {
-    await createRound.mutateAsync({ job_id: job.id, round_name: 'New Round' });
+    if (!newRoundName.trim()) {
+      toast.error('Please enter a round name');
+      return;
+    }
+    await createRound.mutateAsync({ 
+      job_id: job.id, 
+      round_name: newRoundName,
+      round_date: newRoundDate ? new Date(newRoundDate).toISOString() : null,
+    });
     toast.success('Round added');
+    setShowAddRound(false);
+    setNewRoundName('');
+    setNewRoundDate('');
+  };
+
+  const handleGeneratePrepPlan = async (roundId: string, roundName: string) => {
+    setGeneratingPrepPlan(true);
+    try {
+      // Determine mode based on round name
+      let mode = 'behavioral';
+      const lowerName = roundName.toLowerCase();
+      if (lowerName.includes('technical') || lowerName.includes('coding')) mode = 'technical';
+      else if (lowerName.includes('system') || lowerName.includes('design')) mode = 'system_design';
+      else if (lowerName.includes('final') || lowerName.includes('executive')) mode = 'executive';
+
+      // Generate interview plan
+      const { data: plan, error } = await supabase.functions.invoke('generate-interview-plan', {
+        body: {
+          mode,
+          difficulty: 'medium',
+          duration: 30,
+          targetRole: job.title,
+          seniority: 'mid',
+          jobDescription: job.jd_text || '',
+          storyTags: [],
+        }
+      });
+
+      if (error) throw error;
+
+      // Create a practice session linked to this job
+      const session = await createSession.mutateAsync({
+        job_id: job.id,
+        mode: mode as any,
+        difficulty: 'medium',
+        duration_minutes: 30,
+        status: 'in_progress',
+      });
+
+      toast.success(`Prep plan generated with ${plan.questions.length} questions!`);
+      navigate(`/interview/live?session=${session.id}`);
+    } catch (error) {
+      console.error('Error generating prep plan:', error);
+      toast.error('Failed to generate prep plan');
+    } finally {
+      setGeneratingPrepPlan(false);
+    }
   };
 
   const handleStartPractice = async () => {
     const session = await createSession.mutateAsync({ job_id: job.id, mode: 'behavioral' });
     toast.success('Practice session started');
-    navigate('/interview');
+    navigate(`/interview/live?session=${session.id}`);
+  };
+
+  const handleViewDebrief = (sessionId: string) => {
+    navigate(`/session-debrief?session=${sessionId}`);
   };
 
   const tabs = [
@@ -117,6 +191,9 @@ const JobDetail: React.FC = () => {
     { key: 'interviews', label: `Interviews (${rounds.length})` },
     { key: 'practice', label: `Practice (${sessions.length})` },
   ];
+
+  // Count sessions linked to each round (would need round_id on session, using mock for now)
+  const getSessionCountForRound = (roundId: string) => 0;
 
   return (
     <div className={cn("max-w-6xl mx-auto", intensity !== 'off' && 'animate-fade-in-up')}>
@@ -291,44 +368,41 @@ const JobDetail: React.FC = () => {
 
           {activeTab === 'interviews' && (
             <div className="space-y-4">
-              <button onClick={handleAddRound} className="flex items-center gap-2 text-primary text-sm hover:underline">
+              <Button onClick={() => setShowAddRound(true)} variant="outline" className="gap-2">
                 <Plus className="w-4 h-4" /> Add Interview Round
-              </button>
+              </Button>
               {rounds.length === 0 ? (
                 <div className="glass-card p-8 text-center">
                   <MessageSquare className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
                   <p className="text-muted-foreground">No interview rounds scheduled</p>
                 </div>
               ) : (
-                rounds.map(round => (
-                  <div key={round.id} className="glass-card p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-foreground">{round.round_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {round.round_date ? format(new Date(round.round_date), 'MMM d, yyyy h:mm a') : 'Not scheduled'}
-                        </p>
-                      </div>
-                      <span className={cn(
-                        "px-2 py-1 rounded text-xs font-medium",
-                        round.outcome === 'passed' && "bg-success/20 text-success",
-                        round.outcome === 'failed' && "bg-destructive/20 text-destructive",
-                        round.outcome === 'pending' && "bg-muted text-muted-foreground"
-                      )}>
-                        {round.outcome}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                <div className="space-y-3">
+                  {rounds.map(round => (
+                    <InterviewRoundCard
+                      key={round.id}
+                      round={round}
+                      onGeneratePrepPlan={handleGeneratePrepPlan}
+                      linkedSessionCount={getSessionCountForRound(round.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {generatingPrepPlan && (
+                <div className="glass-card p-4 flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  <span className="text-muted-foreground">Generating prep plan...</span>
+                </div>
               )}
             </div>
           )}
 
           {activeTab === 'practice' && (
             <div className="space-y-4">
-              <button onClick={handleStartPractice} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground font-medium hover:opacity-90">
+              <Button onClick={handleStartPractice} className="gap-2 bg-gradient-aurora text-background">
                 <Mic className="w-4 h-4" /> Start Practice for This Job
-              </button>
+              </Button>
               {sessions.length === 0 ? (
                 <div className="glass-card p-8 text-center">
                   <Mic className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
@@ -336,7 +410,11 @@ const JobDetail: React.FC = () => {
                 </div>
               ) : (
                 sessions.map(session => (
-                  <div key={session.id} className="glass-card p-4 flex items-center justify-between">
+                  <div 
+                    key={session.id} 
+                    className="glass-card p-4 flex items-center justify-between cursor-pointer hover-halo"
+                    onClick={() => handleViewDebrief(session.id)}
+                  >
                     <div>
                       <p className="font-medium text-foreground capitalize">{session.mode} Practice</p>
                       <p className="text-sm text-muted-foreground">
@@ -392,6 +470,39 @@ const JobDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Round Dialog */}
+      <Dialog open={showAddRound} onOpenChange={setShowAddRound}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Interview Round</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Round Name</Label>
+              <Input
+                value={newRoundName}
+                onChange={(e) => setNewRoundName(e.target.value)}
+                placeholder="e.g., Phone Screen, Technical, Final"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Date & Time (optional)</Label>
+              <Input
+                type="datetime-local"
+                value={newRoundDate}
+                onChange={(e) => setNewRoundDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowAddRound(false)}>Cancel</Button>
+            <Button onClick={handleAddRound}>Add Round</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
