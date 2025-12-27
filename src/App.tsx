@@ -17,6 +17,7 @@ import SessionDebrief from "./pages/SessionDebrief";
 import StoryBank from "./pages/StoryBank";
 import ProfileHub from "./pages/ProfileHub";
 import SettingsPage from "./pages/Settings";
+import Analytics from "./pages/Analytics";
 import AuthPage from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/stories" element={<ProtectedRoute><AppLayout><StoryBank /></AppLayout></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfileHub /></AppLayout></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
