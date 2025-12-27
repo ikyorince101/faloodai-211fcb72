@@ -6,19 +6,27 @@ import { Database } from '@/integrations/supabase/types';
 type PracticeSession = Database['public']['Tables']['practice_sessions']['Row'];
 type PracticeEvent = Database['public']['Tables']['practice_events']['Row'];
 type SessionInsert = Database['public']['Tables']['practice_sessions']['Insert'];
+type PracticeMode = Database['public']['Enums']['practice_mode'];
+type PracticeDifficulty = Database['public']['Enums']['practice_difficulty'];
 
-export const usePracticeSessions = () => {
+export const usePracticeSessions = (jobId?: string) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['practice-sessions', user?.id],
+    queryKey: ['practice-sessions', user?.id, jobId],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('practice_sessions')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+      
+      if (jobId) {
+        query = query.eq('job_id', jobId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as PracticeSession[];
     },
@@ -47,7 +55,6 @@ export const useWeeklyPracticeStats = () => {
       
       if (error) throw error;
       
-      // Calculate streak (consecutive days with practice)
       const sessionDates = new Set((data || []).map(s => 
         new Date(s.created_at).toDateString()
       ));
@@ -100,7 +107,6 @@ export const useRecentRubricScores = () => {
       
       if (eventsError) throw eventsError;
       
-      // Aggregate rubric scores by dimension
       const dimensions: Record<string, number[]> = {};
       (events || []).forEach(event => {
         const rubric = event.rubric as Record<string, number> | null;
@@ -144,4 +150,25 @@ export const useCreateSession = () => {
   });
 };
 
-export type { PracticeSession, PracticeEvent };
+export const useUpdateSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<PracticeSession> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('practice_sessions')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practice-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['weekly-practice'] });
+    },
+  });
+};
+
+export type { PracticeSession, PracticeEvent, PracticeMode, PracticeDifficulty };
