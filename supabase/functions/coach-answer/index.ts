@@ -29,6 +29,8 @@ interface CoachingResponse {
   rubric: RubricScore[];
   overallScore: number;
   spokenFeedback: string;
+  retryConstraints: string[];
+  writtenFeedback: string[];
 }
 
 serve(async (req) => {
@@ -53,6 +55,12 @@ serve(async (req) => {
 
     console.log('Generating coaching feedback for:', question.substring(0, 50) + '...');
 
+    // Determine rubric dimensions based on mode
+    const isTechnical = mode === 'technical' || mode === 'system_design';
+    const rubricDimensions = isTechnical
+      ? ['Structure', 'Specificity', 'Impact', 'Ownership', 'Tradeoffs', 'Depth']
+      : ['Structure', 'Specificity', 'Impact', 'Ownership', 'Reflection', 'Brevity'];
+
     const prompt = `You are an expert interview coach providing feedback on a candidate's answer.
 
 INTERVIEW CONTEXT:
@@ -70,22 +78,39 @@ ${followUps.map((f, i) => `${i + 1}. ${f}`).join('\n')}` : ''}
 CANDIDATE'S ANSWER:
 ${transcript}
 
-Provide comprehensive feedback. Evaluate the answer using the STAR method (Situation, Task, Action, Result) for behavioral questions, or technical accuracy and clarity for technical questions.
+Provide comprehensive feedback. Evaluate using STAR method for behavioral questions or technical accuracy for technical questions.
+
+RUBRIC DIMENSIONS TO SCORE (0-5 scale):
+${rubricDimensions.map(d => `- ${d}`).join('\n')}
+
+Score Meanings:
+0 = Not demonstrated
+1 = Poor
+2 = Below expectations  
+3 = Meets expectations
+4 = Exceeds expectations
+5 = Exceptional
 
 Respond with ONLY valid JSON (no markdown):
 {
-  "overallFeedback": "2-3 sentence summary of the answer quality",
-  "strengths": ["strength1", "strength2", "strength3"],
-  "improvements": ["improvement1", "improvement2"],
+  "overallFeedback": "2-3 sentence summary",
+  "strengths": ["specific strength 1", "specific strength 2"],
+  "improvements": ["specific improvement 1", "specific improvement 2"],
   "rubric": [
-    {"dimension": "Clarity", "score": 75, "feedback": "Brief feedback"},
-    {"dimension": "Structure", "score": 80, "feedback": "Brief feedback"},
-    {"dimension": "Specificity", "score": 70, "feedback": "Brief feedback"},
-    {"dimension": "Relevance", "score": 85, "feedback": "Brief feedback"},
-    {"dimension": "Impact", "score": 72, "feedback": "Brief feedback"}
+    ${rubricDimensions.map(d => `{"dimension": "${d}", "score": 3, "feedback": "Brief feedback on ${d.toLowerCase()}"}`).join(',\n    ')}
   ],
-  "overallScore": 76,
-  "spokenFeedback": "A conversational 2-3 sentence coaching tip that would be spoken aloud to the candidate. Be encouraging but specific about one key improvement."
+  "overallScore": 65,
+  "spokenFeedback": "Conversational 15-30 second coaching: 1 specific strength + 1 specific fix + retry prompt. Be encouraging but direct.",
+  "writtenFeedback": [
+    "Detailed bullet point 1 about what worked well",
+    "Detailed bullet point 2 about specific improvement area",
+    "Detailed bullet point 3 with actionable advice"
+  ],
+  "retryConstraints": [
+    "For retry: Try starting with the bottom-line result first",
+    "For retry: Add specific numbers or metrics",
+    "For retry: Keep it under 90 seconds"
+  ]
 }`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -132,22 +157,41 @@ Respond with ONLY valid JSON (no markdown):
         cleanContent = cleanContent.slice(0, -3);
       }
       coaching = JSON.parse(cleanContent.trim());
+      
+      // Ensure scores are 0-5 scale
+      coaching.rubric = coaching.rubric.map(r => ({
+        ...r,
+        score: Math.min(5, Math.max(0, Math.round(r.score > 5 ? r.score / 20 : r.score)))
+      }));
+      
+      // Calculate overall score as percentage from 0-5 rubric
+      const totalScore = coaching.rubric.reduce((sum, r) => sum + r.score, 0);
+      const maxScore = coaching.rubric.length * 5;
+      coaching.overallScore = Math.round((totalScore / maxScore) * 100);
+      
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
-      // Fallback response
       coaching = {
         overallFeedback: 'Your answer was received. Keep practicing to improve your interview skills.',
         strengths: ['Attempted to answer the question'],
         improvements: ['Add more specific examples', 'Use the STAR method'],
-        rubric: [
-          { dimension: 'Clarity', score: 70, feedback: 'Could be clearer' },
-          { dimension: 'Structure', score: 65, feedback: 'Consider using STAR format' },
-          { dimension: 'Specificity', score: 60, feedback: 'Add more details' },
-          { dimension: 'Relevance', score: 75, feedback: 'Mostly on topic' },
-          { dimension: 'Impact', score: 65, feedback: 'Quantify your results' }
+        rubric: rubricDimensions.map(d => ({ 
+          dimension: d, 
+          score: 2, 
+          feedback: 'Could be improved' 
+        })),
+        overallScore: 40,
+        spokenFeedback: 'Good effort! Try to include more specific examples and quantify your impact next time.',
+        writtenFeedback: [
+          'Consider adding more context about the situation',
+          'Include specific actions you personally took',
+          'Quantify the results when possible'
         ],
-        overallScore: 67,
-        spokenFeedback: 'Good effort! Try to include more specific examples and quantify your impact next time.'
+        retryConstraints: [
+          'For retry: Start with the result',
+          'For retry: Add specific numbers',
+          'For retry: Be more concise'
+        ]
       };
     }
 

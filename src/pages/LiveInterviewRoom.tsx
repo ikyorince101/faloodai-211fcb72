@@ -22,7 +22,7 @@ interface InterviewQuestion {
 
 interface RubricScore {
   dimension: string;
-  score: number;
+  score: number; // 0-5 scale
   feedback: string;
 }
 
@@ -31,8 +31,10 @@ interface CoachingFeedback {
   strengths: string[];
   improvements: string[];
   rubric: RubricScore[];
-  overallScore: number;
+  overallScore: number; // 0-100 percentage
   spokenFeedback: string;
+  writtenFeedback?: string[];
+  retryConstraints?: string[];
 }
 
 interface QuestionState {
@@ -273,8 +275,10 @@ const LiveInterviewRoom: React.FC = () => {
   const endSession = async () => {
     if (sessionId) {
       await supabase.from('practice_sessions').update({ status: 'completed' }).eq('id', sessionId);
+      navigate(`/session-debrief?session=${sessionId}`);
+    } else {
+      navigate('/interview-practice');
     }
-    navigate('/interview-practice');
   };
 
   if (questions.length === 0) {
@@ -459,16 +463,20 @@ const LiveInterviewRoom: React.FC = () => {
                 {currentState.feedback.overallFeedback}
               </p>
 
-              {/* Rubric Scores */}
+              {/* Rubric Scores - 0-5 scale */}
               <div className="space-y-2">
-                <h4 className="text-xs font-medium text-foreground">Rubric</h4>
+                <h4 className="text-xs font-medium text-foreground">Rubric (0-5)</h4>
                 {currentState.feedback.rubric.map((r, i) => (
                   <div key={i} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">{r.dimension}</span>
-                      <span className="text-foreground">{r.score}%</span>
+                      <span className={`font-medium ${
+                        r.score >= 4 ? 'text-success' : r.score >= 3 ? 'text-warning' : 'text-destructive'
+                      }`}>
+                        {r.score}/5
+                      </span>
                     </div>
-                    <Progress value={r.score} className="h-1.5" />
+                    <Progress value={(r.score / 5) * 100} className="h-1.5" />
                   </div>
                 ))}
               </div>
@@ -498,6 +506,35 @@ const LiveInterviewRoom: React.FC = () => {
                   </ul>
                 </div>
               </div>
+
+              {/* Written Feedback */}
+              {currentState.feedback.writtenFeedback && currentState.feedback.writtenFeedback.length > 0 && (
+                <div className="pt-3 border-t border-border">
+                  <h4 className="text-xs font-medium text-foreground mb-2">Detailed Feedback</h4>
+                  <ul className="space-y-1">
+                    {currentState.feedback.writtenFeedback.map((f, i) => (
+                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                        <span className="text-primary">•</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Retry Constraints */}
+              {currentState.feedback.retryConstraints && currentState.feedback.retryConstraints.length > 0 && (
+                <div className="bg-accent/20 rounded-lg p-3">
+                  <h4 className="text-xs font-medium text-accent mb-2">Retry Suggestions</h4>
+                  <ul className="space-y-1">
+                    {currentState.feedback.retryConstraints.map((c, i) => (
+                      <li key={i} className="text-xs text-muted-foreground">
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Save to Story Bank */}
               <Button 

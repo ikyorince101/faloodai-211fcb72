@@ -13,6 +13,7 @@ import JobDetail from "./pages/JobDetail";
 import ResumeWorkspace from "./pages/ResumeWorkspace";
 import InterviewPractice from "./pages/InterviewPractice";
 import LiveInterviewRoom from "./pages/LiveInterviewRoom";
+import SessionDebrief from "./pages/SessionDebrief";
 import StoryBank from "./pages/StoryBank";
 import ProfileHub from "./pages/ProfileHub";
 import SettingsPage from "./pages/Settings";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/resume" element={<ProtectedRoute><AppLayout><ResumeWorkspace /></AppLayout></ProtectedRoute>} />
               <Route path="/interview" element={<ProtectedRoute><AppLayout><InterviewPractice /></AppLayout></ProtectedRoute>} />
               <Route path="/interview/live" element={<ProtectedRoute><AppLayout><LiveInterviewRoom /></AppLayout></ProtectedRoute>} />
+              <Route path="/session-debrief" element={<ProtectedRoute><AppLayout><SessionDebrief /></AppLayout></ProtectedRoute>} />
               <Route path="/stories" element={<ProtectedRoute><AppLayout><StoryBank /></AppLayout></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfileHub /></AppLayout></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
