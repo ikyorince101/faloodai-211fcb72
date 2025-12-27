@@ -1,30 +1,48 @@
-import React, { useState, useMemo } from 'react';
-import { FileText, Plus, Wand2, RefreshCw, Check, AlertTriangle, ChevronDown } from 'lucide-react';
-import { useResumeVersions, useCreateResume, useUpdateResume, ResumeVersion } from '@/hooks/useResumes';
+import React, { useState, useMemo, useCallback } from 'react';
+import { FileText, Wand2, RefreshCw, Check, AlertTriangle, Download, FileDown, Info, Sparkles } from 'lucide-react';
+import { useResumeVersions, useCreateResume, useUpdateResume } from '@/hooks/useResumes';
 import { useJobs } from '@/hooks/useJobs';
 import { useProfile } from '@/hooks/useProfile';
+import { useMotion } from '@/contexts/MotionContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type Emphasis = 'skills' | 'leadership' | 'impact';
 
 interface ATSIssue {
+  category: 'formatting' | 'content' | 'keywords';
   type: 'error' | 'warning';
   message: string;
-  fix?: string;
+  fix: string;
+}
+
+interface ATSReport {
+  score: number;
+  issues: ATSIssue[];
+  keywordCoverage: {
+    found: string[];
+    missing: string[];
+    coverage: number;
+  };
+  formattingPassed: boolean;
+  explanation: string;
 }
 
 const ResumeWorkspace: React.FC = () => {
-  const { data: resumes = [], isLoading } = useResumeVersions();
+  const { data: resumes = [] } = useResumeVersions();
   const { data: jobs = [] } = useJobs();
   const { data: profile } = useProfile();
   const createResume = useCreateResume();
   const updateResume = useUpdateResume();
+  const { intensity } = useMotion();
 
   const [selectedJobId, setSelectedJobId] = useState<string>('none');
   const [jdText, setJdText] = useState('');
@@ -32,6 +50,11 @@ const ResumeWorkspace: React.FC = () => {
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [resumeName, setResumeName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [atsReport, setAtsReport] = useState<ATSReport | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [showSealStamp, setShowSealStamp] = useState(false);
 
   const selectedResume = useMemo(() => {
     return resumes.find(r => r.id === selectedResumeId) || null;
@@ -41,28 +64,38 @@ const ResumeWorkspace: React.FC = () => {
     return jobs.find(j => j.id === selectedJobId) || null;
   }, [jobs, selectedJobId]);
 
-  // Mock ATS analysis based on resume content
-  const atsAnalysis = useMemo(() => {
-    if (!selectedResume) return null;
-    
-    const content = selectedResume.content as Record<string, unknown> | null;
-    const issues: ATSIssue[] = [];
-    let score = selectedResume.ats_score || 75;
+  const resumeContent = selectedResume?.content as Record<string, unknown> | null;
 
-    // Mock issues based on content structure
-    if (!content || Object.keys(content).length === 0) {
-      issues.push({ type: 'error', message: 'Resume content is empty', fix: 'Add your work experience and skills' });
-      score = 30;
-    }
-    if (!jdText && !selectedJob?.jd_text) {
-      issues.push({ type: 'warning', message: 'No job description provided', fix: 'Paste a JD to optimize keywords' });
-    }
-    if (score < 80) {
-      issues.push({ type: 'warning', message: 'Consider adding more quantified achievements', fix: 'Include metrics like percentages, revenue, or time saved' });
-    }
+  const runATSValidation = useCallback(async () => {
+    if (!selectedResume || !resumeContent) return;
 
-    return { score, issues };
-  }, [selectedResume, jdText, selectedJob]);
+    setIsValidating(true);
+    try {
+      const jobDesc = jdText || selectedJob?.jd_text || '';
+      
+      const { data, error } = await supabase.functions.invoke('ats-validate', {
+        body: { resumeContent, jobDescription: jobDesc }
+      });
+
+      if (error) throw error;
+      
+      setAtsReport(data as ATSReport);
+      
+      // Update resume with new score
+      await updateResume.mutateAsync({
+        id: selectedResume.id,
+        ats_score: data.score,
+        ats_report: data,
+      });
+      
+      toast.success(`ATS Score: ${data.score}/100`);
+    } catch (error) {
+      console.error('Validation error:', error);
+      toast.error('Failed to validate resume');
+    } finally {
+      setIsValidating(false);
+    }
+  }, [selectedResume, resumeContent, jdText, selectedJob, updateResume]);
 
   const handleGenerate = async () => {
     if (!resumeName.trim()) {
@@ -72,9 +105,6 @@ const ResumeWorkspace: React.FC = () => {
 
     setIsGenerating(true);
     
-    // Simulate generation delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
     try {
       const content = {
         name: profile?.full_name || 'Your Name',
@@ -92,13 +122,14 @@ const ResumeWorkspace: React.FC = () => {
         name: resumeName,
         job_id: selectedJobId !== 'none' ? selectedJobId : null,
         content,
-        ats_score: Math.floor(70 + Math.random() * 25),
-        ats_report: { keywords: [], suggestions: [] },
+        ats_score: null,
+        ats_report: null,
       });
 
       setSelectedResumeId(result.id);
       setResumeName('');
-      toast.success('Resume generated!');
+      setAtsReport(null);
+      toast.success('Resume generated! Run ATS validation to check compatibility.');
     } catch (error) {
       toast.error('Failed to generate resume');
     } finally {
@@ -106,37 +137,80 @@ const ResumeWorkspace: React.FC = () => {
     }
   };
 
-  const handleRegenerate = async () => {
-    if (!selectedResume) return;
+  const handleExport = async (format: 'docx' | 'txt') => {
+    if (!selectedResume || !resumeContent) return;
 
-    setIsGenerating(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Block PDF/DOCX if formatting fails
+    if (format === 'docx' && atsReport && !atsReport.formattingPassed) {
+      toast.error('Cannot export DOCX: Fix formatting issues first');
+      return;
+    }
 
+    setIsExporting(true);
     try {
-      await updateResume.mutateAsync({
-        id: selectedResume.id,
-        ats_score: Math.min(100, (selectedResume.ats_score || 70) + 5),
-        ats_report: { improved: true, keywords: [], suggestions: [] },
+      const { data, error } = await supabase.functions.invoke('export-resume', {
+        body: { 
+          resumeContent, 
+          format,
+          resumeName: selectedResume.name 
+        }
       });
-      toast.success('Resume optimized!');
+
+      if (error) throw error;
+
+      // Create download link
+      const blob = new Blob([data], { 
+        type: format === 'docx' ? 'application/xml' : 'text/plain' 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedResume.name}.${format === 'docx' ? 'xml' : 'txt'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Show seal stamp animation in magical mode
+      if (intensity === 'magical') {
+        setShowSealStamp(true);
+        setTimeout(() => setShowSealStamp(false), 2000);
+      }
+
+      toast.success(`Resume exported as ${format.toUpperCase()}`);
     } catch (error) {
-      toast.error('Failed to optimize');
+      console.error('Export error:', error);
+      toast.error('Failed to export resume');
     } finally {
-      setIsGenerating(false);
+      setIsExporting(false);
     }
   };
 
-  const resumeContent = selectedResume?.content as Record<string, unknown> | null;
+  const formattingIssues = atsReport?.issues.filter(i => i.category === 'formatting') || [];
+  const contentIssues = atsReport?.issues.filter(i => i.category === 'content') || [];
+  const keywordIssues = atsReport?.issues.filter(i => i.category === 'keywords') || [];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up relative">
+      {/* Seal Stamp Animation Overlay */}
+      {showSealStamp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="animate-seal-stamp">
+            <div className="w-32 h-32 rounded-full bg-success/20 border-4 border-success flex items-center justify-center">
+              <Check className="w-16 h-16 text-success" />
+            </div>
+            <p className="text-success text-center mt-2 font-bold text-lg">Exported!</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Resume Workspace</h1>
           <p className="text-muted-foreground">Create ATS-optimized resume versions for each job.</p>
         </div>
         {resumes.length > 0 && (
-          <Select value={selectedResumeId || ''} onValueChange={setSelectedResumeId}>
+          <Select value={selectedResumeId || ''} onValueChange={(val) => { setSelectedResumeId(val); setAtsReport(null); }}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select version..." />
             </SelectTrigger>
@@ -151,7 +225,7 @@ const ResumeWorkspace: React.FC = () => {
         )}
       </div>
 
-      <div className="grid lg:grid-cols-[300px_1fr_300px] gap-6">
+      <div className="grid lg:grid-cols-[300px_1fr_320px] gap-6">
         {/* Left Panel - Controls */}
         <div className="glass-card p-4 space-y-4 h-fit">
           <div>
@@ -176,7 +250,7 @@ const ResumeWorkspace: React.FC = () => {
             <Textarea
               value={jdText || selectedJob?.jd_text || ''}
               onChange={(e) => setJdText(e.target.value)}
-              placeholder="Paste job description here..."
+              placeholder="Paste job description here for keyword analysis..."
               rows={6}
               className="text-sm"
             />
@@ -307,86 +381,178 @@ const ResumeWorkspace: React.FC = () => {
 
         {/* Right Panel - ATS Validation */}
         <div className="glass-card p-4 space-y-4 h-fit">
-          <h3 className="font-semibold text-foreground">ATS Validation</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-foreground">ATS Validation</h3>
+            {selectedResume && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={runATSValidation}
+                disabled={isValidating}
+                className="gap-1"
+              >
+                <RefreshCw className={`w-3 h-3 ${isValidating ? 'animate-spin' : ''}`} />
+                {isValidating ? 'Validating...' : 'Validate'}
+              </Button>
+            )}
+          </div>
           
-          {atsAnalysis && selectedResume ? (
+          {atsReport && selectedResume ? (
             <>
               {/* ATS Score Ring */}
               <div className="flex justify-center py-4">
                 <div className="relative w-32 h-32">
                   <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
                     <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="none"
-                      stroke="hsl(var(--muted))"
-                      strokeWidth="8"
-                    />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="none"
-                      stroke={atsAnalysis.score >= 80 ? 'hsl(var(--primary))' : atsAnalysis.score >= 60 ? 'hsl(var(--warning, 45 93% 47%))' : 'hsl(var(--destructive))'}
+                      cx="50" cy="50" r="40" fill="none"
+                      stroke={atsReport.score >= 80 ? 'hsl(var(--success))' : atsReport.score >= 60 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))'}
                       strokeWidth="8"
                       strokeLinecap="round"
-                      strokeDasharray={`${atsAnalysis.score * 2.51} 251`}
+                      strokeDasharray={`${atsReport.score * 2.51} 251`}
                       className="transition-all duration-1000"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold text-foreground">{atsAnalysis.score}</span>
+                    <span className="text-3xl font-bold text-foreground">{atsReport.score}</span>
                     <span className="text-xs text-muted-foreground">ATS Score</span>
                   </div>
                 </div>
               </div>
 
-              {/* Issues List */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-foreground">Issues & Suggestions</h4>
-                {atsAnalysis.issues.length === 0 ? (
-                  <div className="flex items-center gap-2 text-sm text-green-500">
-                    <Check className="w-4 h-4" />
-                    <span>No issues found!</span>
+              {/* Explanation Panel */}
+              <Collapsible open={showExplanation} onOpenChange={setShowExplanation}>
+                <CollapsibleTrigger className="flex items-center gap-2 text-sm text-primary hover:underline w-full">
+                  <Info className="w-4 h-4" />
+                  Why this score?
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                  {atsReport.explanation}
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Keyword Coverage */}
+              {atsReport.keywordCoverage && (jdText || selectedJob?.jd_text) && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Keyword Coverage</span>
+                    <span className="font-medium text-foreground">{atsReport.keywordCoverage.coverage}%</span>
                   </div>
-                ) : (
-                  atsAnalysis.issues.map((issue, i) => (
-                    <div
-                      key={i}
-                      className={`p-3 rounded-lg text-sm ${
-                        issue.type === 'error' 
-                          ? 'bg-destructive/10 border border-destructive/20' 
-                          : 'bg-warning/10 border border-warning/20'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className={`w-4 h-4 mt-0.5 ${
-                          issue.type === 'error' ? 'text-destructive' : 'text-warning'
-                        }`} />
-                        <div>
-                          <p className="text-foreground">{issue.message}</p>
-                          {issue.fix && (
-                            <p className="text-muted-foreground text-xs mt-1">
-                              💡 {issue.fix}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-500"
+                      style={{ width: `${atsReport.keywordCoverage.coverage}%` }}
+                    />
+                  </div>
+                  {atsReport.keywordCoverage.found.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {atsReport.keywordCoverage.found.slice(0, 5).map((kw, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs bg-success/20 text-success">
+                          ✓ {kw}
+                        </Badge>
+                      ))}
                     </div>
-                  ))
+                  )}
+                  {atsReport.keywordCoverage.missing.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {atsReport.keywordCoverage.missing.slice(0, 5).map((kw, i) => (
+                        <Badge key={i} variant="outline" className="text-xs text-destructive border-destructive/30">
+                          ✗ {kw}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Issues by Category */}
+              <div className="space-y-3">
+                {formattingIssues.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-medium text-foreground mb-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-destructive" />
+                      Formatting ({formattingIssues.length})
+                    </h4>
+                    {formattingIssues.map((issue, i) => (
+                      <div key={i} className="p-2 rounded bg-destructive/10 text-xs mb-1">
+                        <p className="text-foreground">{issue.message}</p>
+                        <p className="text-muted-foreground mt-0.5">💡 {issue.fix}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {contentIssues.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-medium text-foreground mb-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-warning" />
+                      Content ({contentIssues.length})
+                    </h4>
+                    {contentIssues.map((issue, i) => (
+                      <div key={i} className="p-2 rounded bg-warning/10 text-xs mb-1">
+                        <p className="text-foreground">{issue.message}</p>
+                        <p className="text-muted-foreground mt-0.5">💡 {issue.fix}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {keywordIssues.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-medium text-foreground mb-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-primary" />
+                      Keywords ({keywordIssues.length})
+                    </h4>
+                    {keywordIssues.map((issue, i) => (
+                      <div key={i} className="p-2 rounded bg-primary/10 text-xs mb-1">
+                        <p className="text-foreground">{issue.message}</p>
+                        <p className="text-muted-foreground mt-0.5">💡 {issue.fix}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {atsReport.issues.length === 0 && (
+                  <div className="flex items-center gap-2 text-sm text-success p-2 bg-success/10 rounded">
+                    <Check className="w-4 h-4" />
+                    <span>No issues found! Your resume is ATS-ready.</span>
+                  </div>
                 )}
               </div>
 
-              <Button 
-                onClick={handleRegenerate}
-                disabled={isGenerating}
-                variant="outline"
-                className="w-full gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                Regenerate with Fixes
-              </Button>
+              {/* Export Buttons */}
+              <div className="space-y-2 pt-2 border-t border-border">
+                <h4 className="text-sm font-medium text-foreground">Export</h4>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleExport('docx')}
+                    disabled={isExporting || !atsReport.formattingPassed}
+                    className="flex-1 gap-1"
+                    title={!atsReport.formattingPassed ? 'Fix formatting issues first' : 'Export as DOCX'}
+                  >
+                    <FileDown className="w-4 h-4" />
+                    DOCX
+                    {!atsReport.formattingPassed && <span className="text-destructive">⚠</span>}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleExport('txt')}
+                    disabled={isExporting}
+                    className="flex-1 gap-1"
+                  >
+                    <Download className="w-4 h-4" />
+                    TXT
+                  </Button>
+                </div>
+                {!atsReport.formattingPassed && (
+                  <p className="text-xs text-destructive">
+                    ⚠ DOCX export blocked: Fix formatting issues first
+                  </p>
+                )}
+              </div>
             </>
           ) : (
             <div className="text-center py-8">
@@ -394,7 +560,9 @@ const ResumeWorkspace: React.FC = () => {
                 <FileText className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-sm text-muted-foreground">
-                Generate or select a resume to see ATS analysis
+                {selectedResume 
+                  ? 'Click "Validate" to analyze ATS compatibility'
+                  : 'Generate or select a resume to validate'}
               </p>
             </div>
           )}

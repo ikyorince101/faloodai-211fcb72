@@ -344,3 +344,25 @@
 .animate-breathe {
   animation: breathe 4s ease-in-out infinite;
 }
+
+@keyframes seal-stamp {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.9) rotate(0deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+.animate-seal-stamp {
+  animation: seal-stamp 2s ease-out forwards;
+}

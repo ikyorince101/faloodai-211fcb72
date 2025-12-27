@@ -1,1 +1,7 @@
 project_id = "urapmlacelttkiqfoalu"
+
+[functions.ats-validate]
+verify_jwt = false
+
+[functions.export-resume]
+verify_jwt = false
