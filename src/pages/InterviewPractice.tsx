@@ -142,8 +142,8 @@ const InterviewPractice: React.FC = () => {
       toast.success('Practice session started!');
       setShowNewSession(false);
       setQuestionPlan(null);
-      // Navigate to session (could be a dedicated session page)
-      navigate(`/interview-practice?session=${session.id}`);
+      // Navigate to live interview room
+      navigate(`/interview/live?session=${session.id}`);
     } catch (error) {
       toast.error('Failed to start session');
     }
