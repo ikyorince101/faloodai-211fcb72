@@ -76,8 +76,24 @@ const LiveInterviewRoom: React.FC = () => {
     status: 'pending' 
   };
 
-  // Load questions (mock data for now - in production this would come from session)
+  // Load questions from sessionStorage (generated in InterviewPractice) or use fallback
   useEffect(() => {
+    if (!sessionId) return;
+
+    const storedQuestions = sessionStorage.getItem(`session-${sessionId}-questions`);
+    if (storedQuestions) {
+      try {
+        const parsed = JSON.parse(storedQuestions);
+        setQuestions(parsed);
+        // Clean up after loading
+        sessionStorage.removeItem(`session-${sessionId}-questions`);
+        return;
+      } catch (e) {
+        console.error('Failed to parse stored questions:', e);
+      }
+    }
+
+    // Fallback: use mock questions if no stored plan
     const mockQuestions: InterviewQuestion[] = [
       {
         id: 1,

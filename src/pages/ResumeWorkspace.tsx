@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import CreditsDisplay from '@/components/billing/CreditsDisplay';
-import EntitlementGate from '@/components/billing/EntitlementGate';
+import PaywallModal from '@/components/billing/PaywallModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -59,6 +59,7 @@ const ResumeWorkspace: React.FC = () => {
   const [atsReport, setAtsReport] = useState<ATSReport | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [showSealStamp, setShowSealStamp] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const selectedResume = useMemo(() => {
     return resumes.find(r => r.id === selectedResumeId) || null;
@@ -108,7 +109,7 @@ const ResumeWorkspace: React.FC = () => {
     }
 
     if (!canGenerateResume) {
-      toast.error('You need API keys or Pro subscription to generate resumes');
+      setShowPaywall(true);
       return;
     }
 
@@ -206,6 +207,9 @@ const ResumeWorkspace: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up relative">
+      {/* Paywall Modal */}
+      <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} type="resume" />
+
       {/* Seal Stamp Animation Overlay */}
       {showSealStamp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">

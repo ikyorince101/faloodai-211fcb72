@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import CreditsDisplay from '@/components/billing/CreditsDisplay';
+import PaywallModal from '@/components/billing/PaywallModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -69,6 +70,7 @@ const InterviewPractice: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [questionPlan, setQuestionPlan] = useState<QuestionPlan | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Extract unique tags from stories
   const storyTags = useMemo(() => {
@@ -134,7 +136,7 @@ const InterviewPractice: React.FC = () => {
 
   const handleStartSession = async () => {
     if (!canRunInterview) {
-      toast.error('You need API keys or Pro subscription to run interviews');
+      setShowPaywall(true);
       return;
     }
 
@@ -152,6 +154,11 @@ const InterviewPractice: React.FC = () => {
         await incrementUsage('interview');
       }
 
+      // Store question plan in sessionStorage for the live room to pick up
+      if (questionPlan) {
+        sessionStorage.setItem(`session-${session.id}-questions`, JSON.stringify(questionPlan.questions));
+      }
+
       toast.success('Practice session started!');
       setShowNewSession(false);
       setQuestionPlan(null);
@@ -164,6 +171,8 @@ const InterviewPractice: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in-up">
+      {/* Paywall Modal */}
+      <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} type="interview" />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Interview Practice</h1>
