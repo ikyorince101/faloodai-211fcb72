@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          encrypted_key: string
+          id: string
+          last_verified_at: string | null
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_key: string
+          id?: string
+          last_verified_at?: string | null
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_key?: string
+          id?: string
+          last_verified_at?: string | null
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      billing_customers: {
+        Row: {
+          created_at: string
+          id: string
+          stripe_customer_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stripe_customer_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      billing_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          price_id: string | null
+          status: string
+          stripe_subscription_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          price_id?: string | null
+          status?: string
+          stripe_subscription_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          price_id?: string | null
+          status?: string
+          stripe_subscription_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       interview_rounds: {
         Row: {
           created_at: string
@@ -323,6 +413,36 @@ export type Database = {
           tags?: Json | null
           task?: string | null
           title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      usage_ledger: {
+        Row: {
+          id: string
+          interviews_used: number
+          period_end: string
+          period_start: string
+          resumes_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          interviews_used?: number
+          period_end: string
+          period_start: string
+          resumes_used?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          interviews_used?: number
+          period_end?: string
+          period_start?: string
+          resumes_used?: number
           updated_at?: string
           user_id?: string
         }
