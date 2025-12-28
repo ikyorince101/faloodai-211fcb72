@@ -8,6 +8,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Landing from "./pages/Landing";
+import Pricing from "./pages/Pricing";
 import Dashboard from "./pages/Dashboard";
 import JobTracker from "./pages/JobTracker";
 import JobDetail from "./pages/JobDetail";
@@ -32,28 +34,33 @@ const App = () => (
           <AuthProvider>
             <Toaster />
             <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<AuthPage />} />
-              
-              <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-              <Route path="/jobs" element={<ProtectedRoute><AppLayout><JobTracker /></AppLayout></ProtectedRoute>} />
-              <Route path="/jobs/:jobId" element={<ProtectedRoute><AppLayout><JobDetail /></AppLayout></ProtectedRoute>} />
-              <Route path="/resume" element={<ProtectedRoute><AppLayout><ResumeWorkspace /></AppLayout></ProtectedRoute>} />
-              <Route path="/interview" element={<ProtectedRoute><AppLayout><InterviewPractice /></AppLayout></ProtectedRoute>} />
-              <Route path="/interview/live" element={<ProtectedRoute><AppLayout><LiveInterviewRoom /></AppLayout></ProtectedRoute>} />
-              <Route path="/session-debrief" element={<ProtectedRoute><AppLayout><SessionDebrief /></AppLayout></ProtectedRoute>} />
-              <Route path="/stories" element={<ProtectedRoute><AppLayout><StoryBank /></AppLayout></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfileHub /></AppLayout></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
-              <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </MotionProvider>
-    </ThemeProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* Public Marketing Pages */}
+                <Route path="/" element={<Landing />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/auth" element={<AuthPage />} />
+                
+                {/* Protected App Pages */}
+                <Route path="/app" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+                <Route path="/jobs" element={<ProtectedRoute><AppLayout><JobTracker /></AppLayout></ProtectedRoute>} />
+                <Route path="/jobs/:jobId" element={<ProtectedRoute><AppLayout><JobDetail /></AppLayout></ProtectedRoute>} />
+                <Route path="/resume" element={<ProtectedRoute><AppLayout><ResumeWorkspace /></AppLayout></ProtectedRoute>} />
+                <Route path="/interview" element={<ProtectedRoute><AppLayout><InterviewPractice /></AppLayout></ProtectedRoute>} />
+                <Route path="/interview/live" element={<ProtectedRoute><AppLayout><LiveInterviewRoom /></AppLayout></ProtectedRoute>} />
+                <Route path="/session/:sessionId/debrief" element={<ProtectedRoute><AppLayout><SessionDebrief /></AppLayout></ProtectedRoute>} />
+                <Route path="/session-debrief" element={<ProtectedRoute><AppLayout><SessionDebrief /></AppLayout></ProtectedRoute>} />
+                <Route path="/stories" element={<ProtectedRoute><AppLayout><StoryBank /></AppLayout></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfileHub /></AppLayout></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+                <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </AuthProvider>
+        </MotionProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
