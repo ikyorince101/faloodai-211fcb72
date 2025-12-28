@@ -161,10 +161,12 @@
     z-index: -1;
   }
 
-  /* Practice Pulse Orb */
+  /* Practice Pulse Orb - static glow, no animation */
   .pulse-orb {
     @apply relative;
-    animation: pulse-glow 2s ease-in-out infinite;
+    box-shadow: 
+      0 0 20px hsl(var(--accent) / 0.3),
+      0 0 40px hsl(var(--accent) / 0.15);
   }
 
   /* Constellation Effect */
@@ -342,7 +344,8 @@
 }
 
 .animate-breathe {
-  animation: breathe 4s ease-in-out infinite;
+  /* Reduced to subtle, no continuous animation */
+  box-shadow: 0 4px 24px -4px hsl(var(--primary) / 0.1);
 }
 
 @keyframes seal-stamp {

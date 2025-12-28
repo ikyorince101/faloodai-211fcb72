@@ -19,23 +19,16 @@ const PracticePulse: React.FC<PracticePulseProps> = ({
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="relative">
-        {/* Pulse rings */}
-        {isActive && intensity === 'magical' && (
-          <>
-            <div className="absolute inset-0 rounded-full bg-accent/20 animate-ping" />
-            <div 
-              className="absolute inset-0 rounded-full bg-accent/10" 
-              style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite', animationDelay: '0.5s' }}
-            />
-          </>
+        {/* Subtle glow ring - no blinking */}
+        {isActive && (
+          <div className="absolute inset-0 rounded-full bg-accent/10 scale-110" />
         )}
         
         {/* Main orb */}
         <div className={cn(
           "w-16 h-16 rounded-full flex items-center justify-center relative",
           "bg-gradient-to-br from-accent/20 to-primary/20",
-          "border border-accent/30",
-          isActive && intensity !== 'off' && 'pulse-orb'
+          "border border-accent/30"
         )}>
           <div className={cn(
             "w-10 h-10 rounded-full flex items-center justify-center",
