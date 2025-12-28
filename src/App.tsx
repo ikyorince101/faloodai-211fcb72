@@ -23,6 +23,9 @@ import SettingsPage from "./pages/Settings";
 import Analytics from "./pages/Analytics";
 import AuthPage from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import SuccessPage from "./pages/Success";
+import CancelPage from "./pages/Cancel";
+import ApiKeysPage from "./pages/ApiKeys";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +43,8 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/success" element={<SuccessPage />} />
+                <Route path="/cancel" element={<CancelPage />} />
                 
                 {/* Protected App Pages */}
                 <Route path="/app" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
@@ -53,6 +58,7 @@ const App = () => (
                 <Route path="/stories" element={<ProtectedRoute><AppLayout><StoryBank /></AppLayout></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfileHub /></AppLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+                <Route path="/settings/api-keys" element={<ProtectedRoute><AppLayout><ApiKeysPage /></AppLayout></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
                 
                 <Route path="*" element={<NotFound />} />
