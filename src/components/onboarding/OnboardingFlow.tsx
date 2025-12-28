@@ -53,32 +53,63 @@ const OnboardingFlow: React.FC = () => {
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // For now, we only handle text-based files
-    const validTypes = ['text/plain', 'application/pdf'];
-    if (!validTypes.includes(file.type) && !file.name.endsWith('.txt') && !file.name.endsWith('.md')) {
-      toast.error('Please upload a text or PDF file');
+    const fileName = file.name.toLowerCase();
+    const isText = fileName.endsWith('.txt') || fileName.endsWith('.md');
+    const isDocx = fileName.endsWith('.docx');
+
+    if (!isText && !isDocx) {
+      toast.error('Please upload a .docx, .txt, or .md file');
       return;
     }
 
+    setIsUploading(true);
+    setError(null);
+
     try {
-      // Read as text for .txt files
-      if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+      if (isText) {
+        // Read text files directly
         const text = await file.text();
         setResumeText(text);
         toast.success('Resume loaded');
-      } else {
-        // For PDF, we'll ask user to paste text
-        toast.info('For PDFs, please copy and paste the text content');
+      } else if (isDocx) {
+        // Upload to edge function for parsing
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-document`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: formData,
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to parse document');
+        }
+
+        setResumeText(data.text);
+        toast.success(`Extracted text from ${file.name}`);
       }
-    } catch {
-      toast.error('Failed to read file');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to read file';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsUploading(false);
     }
-  }, []);
+  }, [session?.access_token]);
 
   const handleParse = async () => {
     if (!resumeText.trim() || resumeText.length < 50) {
@@ -200,19 +231,32 @@ const OnboardingFlow: React.FC = () => {
 
             <div className="space-y-4">
               <label className="block">
-                <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer group">
-                  <FileText className="w-10 h-10 text-muted-foreground group-hover:text-primary mx-auto mb-3 transition-colors" />
-                  <p className="text-sm text-muted-foreground">
-                    Click to upload a text file or drag and drop
-                  </p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    TXT, MD supported
-                  </p>
+                <div className={cn(
+                  "border-2 border-dashed border-border rounded-xl p-8 transition-colors cursor-pointer group",
+                  isUploading ? "opacity-50 cursor-wait" : "hover:border-primary/50 hover:bg-primary/5"
+                )}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-10 h-10 text-primary mx-auto mb-3 animate-spin" />
+                      <p className="text-sm text-muted-foreground">Processing document...</p>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-10 h-10 text-muted-foreground group-hover:text-primary mx-auto mb-3 transition-colors" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload your resume
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        Word (.docx), Text (.txt), Markdown (.md)
+                      </p>
+                    </>
+                  )}
                 </div>
                 <input
                   type="file"
-                  accept=".txt,.md,text/plain"
+                  accept=".txt,.md,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   onChange={handleFileUpload}
+                  disabled={isUploading}
                   className="hidden"
                 />
               </label>
