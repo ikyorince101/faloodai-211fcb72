@@ -6,13 +6,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_TRANSCRIPT_LENGTH = 10000;
+const MAX_QUESTION_LENGTH = 1000;
+const MAX_FOLLOWUP_LENGTH = 500;
+const MAX_COMPETENCY_LENGTH = 100;
+const MAX_ARRAY_LENGTH = 10;
+const MAX_ROLE_LENGTH = 200;
+
+const VALID_MODES = ['behavioral', 'technical', 'case_study', 'mixed', 'custom', 'system_design'] as const;
+const VALID_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
+
+type ValidMode = typeof VALID_MODES[number];
+type ValidDifficulty = typeof VALID_DIFFICULTIES[number];
+
 interface CoachingRequest {
   transcript: string;
   question: string;
   followUps?: string[];
   competencies?: string[];
-  mode: string;
-  difficulty: string;
+  mode: ValidMode;
+  difficulty: ValidDifficulty;
   targetRole?: string;
 }
 
@@ -33,20 +47,79 @@ interface CoachingResponse {
   writtenFeedback: string[];
 }
 
+function sanitizeString(value: unknown, maxLength: number): string {
+  if (typeof value !== "string") return "";
+  return value.slice(0, maxLength).trim();
+}
+
+function validateMode(mode: unknown): ValidMode {
+  if (typeof mode === "string" && VALID_MODES.includes(mode as ValidMode)) {
+    return mode as ValidMode;
+  }
+  return "behavioral";
+}
+
+function validateDifficulty(difficulty: unknown): ValidDifficulty {
+  if (typeof difficulty === "string" && VALID_DIFFICULTIES.includes(difficulty as ValidDifficulty)) {
+    return difficulty as ValidDifficulty;
+  }
+  return "medium";
+}
+
+function validateStringArray(arr: unknown, maxLength: number, maxItems: number): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .slice(0, maxItems)
+    .filter((item): item is string => typeof item === "string")
+    .map(item => item.slice(0, maxLength).trim())
+    .filter(Boolean);
+}
+
+function validateRequest(body: unknown): CoachingRequest | { error: string } {
+  if (!body || typeof body !== "object") {
+    return { error: "Invalid request body" };
+  }
+
+  const raw = body as Record<string, unknown>;
+  
+  const transcript = sanitizeString(raw.transcript, MAX_TRANSCRIPT_LENGTH);
+  const question = sanitizeString(raw.question, MAX_QUESTION_LENGTH);
+
+  if (!transcript) {
+    return { error: "Transcript is required" };
+  }
+  if (!question) {
+    return { error: "Question is required" };
+  }
+
+  return {
+    transcript,
+    question,
+    followUps: validateStringArray(raw.followUps, MAX_FOLLOWUP_LENGTH, MAX_ARRAY_LENGTH),
+    competencies: validateStringArray(raw.competencies, MAX_COMPETENCY_LENGTH, MAX_ARRAY_LENGTH),
+    mode: validateMode(raw.mode),
+    difficulty: validateDifficulty(raw.difficulty),
+    targetRole: sanitizeString(raw.targetRole, MAX_ROLE_LENGTH) || undefined,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { transcript, question, followUps, competencies, mode, difficulty, targetRole }: CoachingRequest = await req.json();
+    const body = await req.json();
+    const validationResult = validateRequest(body);
     
-    if (!transcript || !question) {
-      return new Response(JSON.stringify({ error: 'Transcript and question are required' }), {
+    if ("error" in validationResult) {
+      return new Response(JSON.stringify({ error: validationResult.error }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const { transcript, question, followUps, competencies, mode, difficulty, targetRole } = validationResult;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {

@@ -5,22 +5,109 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_STRING_LENGTH = 2000;
+const MAX_ARRAY_LENGTH = 50;
+const MAX_JSON_SIZE = 100 * 1024; // 100KB
+const VALID_FORMATS = ["docx", "txt"] as const;
+
+type ValidFormat = typeof VALID_FORMATS[number];
+
+interface ExperienceItem {
+  title?: string;
+  company?: string;
+  period?: string;
+  description?: string;
+}
+
+interface SkillItem {
+  name?: string;
+}
+
+interface ProjectItem {
+  name?: string;
+  description?: string;
+}
+
 interface ResumeContent {
   name?: string;
   email?: string;
   location?: string;
   summary?: string;
-  experience?: Array<{
-    title?: string;
-    company?: string;
-    period?: string;
-    description?: string;
-  }>;
-  skills?: Array<{ name?: string } | string>;
-  projects?: Array<{
-    name?: string;
-    description?: string;
-  }>;
+  experience?: ExperienceItem[];
+  skills?: Array<SkillItem | string>;
+  projects?: ProjectItem[];
+}
+
+function sanitizeString(value: unknown, maxLength: number = MAX_STRING_LENGTH): string {
+  if (typeof value !== "string") return "";
+  return value.slice(0, maxLength).trim();
+}
+
+function validateFormat(format: unknown): format is ValidFormat {
+  return typeof format === "string" && VALID_FORMATS.includes(format as ValidFormat);
+}
+
+function validateFileName(name: unknown): string {
+  if (typeof name !== "string") return "resume";
+  // Only allow alphanumeric, spaces, hyphens, underscores
+  const sanitized = name.replace(/[^a-zA-Z0-9\s\-_]/g, "").trim();
+  return sanitized.slice(0, 100) || "resume";
+}
+
+function validateResumeContent(content: unknown): ResumeContent {
+  if (!content || typeof content !== "object") {
+    return {};
+  }
+
+  const raw = content as Record<string, unknown>;
+  
+  const validated: ResumeContent = {
+    name: sanitizeString(raw.name, 200),
+    email: sanitizeString(raw.email, 200),
+    location: sanitizeString(raw.location, 200),
+    summary: sanitizeString(raw.summary, MAX_STRING_LENGTH),
+  };
+
+  // Validate experience array
+  if (Array.isArray(raw.experience)) {
+    validated.experience = raw.experience.slice(0, MAX_ARRAY_LENGTH).map((exp: unknown) => {
+      if (!exp || typeof exp !== "object") return {};
+      const e = exp as Record<string, unknown>;
+      return {
+        title: sanitizeString(e.title, 200),
+        company: sanitizeString(e.company, 200),
+        period: sanitizeString(e.period, 100),
+        description: sanitizeString(e.description, 1000),
+      };
+    });
+  }
+
+  // Validate skills array
+  if (Array.isArray(raw.skills)) {
+    validated.skills = raw.skills.slice(0, MAX_ARRAY_LENGTH).map((skill: unknown) => {
+      if (typeof skill === "string") return sanitizeString(skill, 100);
+      if (skill && typeof skill === "object") {
+        const s = skill as Record<string, unknown>;
+        return { name: sanitizeString(s.name, 100) };
+      }
+      return "";
+    }).filter(Boolean);
+  }
+
+  // Validate projects array
+  if (Array.isArray(raw.projects)) {
+    validated.projects = raw.projects.slice(0, MAX_ARRAY_LENGTH).map((proj: unknown) => {
+      if (!proj || typeof proj !== "object") return { name: "", description: "" };
+      const p = proj as Record<string, unknown>;
+      return {
+        name: sanitizeString(p.name, 200),
+        description: sanitizeString(p.description, 1000),
+      };
+    });
+  }
+
+  return validated;
 }
 
 function escapeXml(text: string): string {
@@ -114,27 +201,36 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeContent, format, resumeName } = await req.json();
+    // Check content length before parsing
+    const contentLength = req.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > MAX_JSON_SIZE) {
+      return new Response(JSON.stringify({ error: 'Request body too large' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await req.json();
+    const { resumeContent, format, resumeName } = body;
     
-    if (!resumeContent) {
-      return new Response(JSON.stringify({ error: 'Resume content is required' }), {
+    // Validate format
+    if (!validateFormat(format)) {
+      return new Response(JSON.stringify({ error: 'Unsupported format. Use docx or txt.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Validate and sanitize resume content
+    const validatedContent = validateResumeContent(resumeContent);
+    const safeFileName = validateFileName(resumeName);
+
     console.log('Generating export for format:', format);
-    console.log('Resume name:', resumeName);
+    console.log('Resume name:', safeFileName);
 
     if (format === 'docx') {
-      // Generate simple DOCX-compatible XML
-      const documentXml = generateDocxXml(resumeContent as ResumeContent);
-      
-      // For a proper DOCX, we'd need to create a ZIP with multiple XML files
-      // For simplicity, we'll return the document.xml content as a downloadable file
-      // In production, you'd use a library or create the full DOCX structure
-      
-      const fileName = `${resumeName || 'resume'}.xml`;
+      const documentXml = generateDocxXml(validatedContent);
+      const fileName = `${safeFileName}.xml`;
       
       return new Response(documentXml, {
         headers: {
@@ -144,8 +240,7 @@ serve(async (req) => {
         },
       });
     } else if (format === 'txt') {
-      // Generate plain text version
-      const content = resumeContent as ResumeContent;
+      const content = validatedContent;
       let textContent = '';
       
       textContent += `${content.name || 'Your Name'}\n`;
@@ -180,7 +275,7 @@ serve(async (req) => {
         });
       }
       
-      const fileName = `${resumeName || 'resume'}.txt`;
+      const fileName = `${safeFileName}.txt`;
       
       return new Response(textContent, {
         headers: {
@@ -189,12 +284,12 @@ serve(async (req) => {
           'Content-Disposition': `attachment; filename="${fileName}"`,
         },
       });
-    } else {
-      return new Response(JSON.stringify({ error: 'Unsupported format. Use docx or txt.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
+
+    return new Response(JSON.stringify({ error: 'Unsupported format. Use docx or txt.' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
     console.error('Error in export-resume function:', error);
