@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Sparkles, 
   Target, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMotion } from '@/contexts/MotionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import MarketingNav from '@/components/marketing/MarketingNav';
 
 const features = [
@@ -72,6 +73,23 @@ const testimonials = [
 
 const Landing: React.FC = () => {
   const { intensity } = useMotion();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/app', { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,16 +122,26 @@ const Landing: React.FC = () => {
           </p>
           
           <div className={`flex flex-col sm:flex-row gap-4 justify-center ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{ animationDelay: '0.3s' }}>
-            <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
-              <Link to="/auth">
-                Get Started Free <ChevronRight className="w-5 h-5" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="gap-2 text-lg px-8">
-              <Link to="/pricing">
-                View Pricing
-              </Link>
-            </Button>
+            {user ? (
+              <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
+                <Link to="/app">
+                  Go to Dashboard <ChevronRight className="w-5 h-5" />
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
+                  <Link to="/auth">
+                    Get Started Free <ChevronRight className="w-5 h-5" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="gap-2 text-lg px-8">
+                  <Link to="/pricing">
+                    View Pricing
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Stats */}
@@ -264,16 +292,26 @@ const Landing: React.FC = () => {
             Join thousands of job seekers who've transformed their career search with FaloodAI.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
-              <Link to="/auth">
-                Start Free Today <Sparkles className="w-5 h-5" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="gap-2 text-lg px-8">
-              <Link to="/pricing">
-                Compare Plans
-              </Link>
-            </Button>
+            {user ? (
+              <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
+                <Link to="/app">
+                  Go to Dashboard <Sparkles className="w-5 h-5" />
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
+                  <Link to="/auth">
+                    Start Free Today <Sparkles className="w-5 h-5" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="gap-2 text-lg px-8">
+                  <Link to="/pricing">
+                    Compare Plans
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -294,9 +332,15 @@ const Landing: React.FC = () => {
             <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
-            <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sign In
-            </Link>
+            {user ? (
+              <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Dashboard
+              </Link>
+            ) : (
+              <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </footer>
