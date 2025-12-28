@@ -2,8 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface FreeUsage {
+  resumes: { used: number; limit: number };
+  resetsOn: string;
+}
+
 export interface Entitlements {
-  plan: 'PRO' | 'FREE_BYOK';
+  plan: 'PRO' | 'FREE_TRIAL' | 'FREE_BYOK';
   hasApiKeys: boolean;
   subscription: {
     status: string;
@@ -14,6 +19,7 @@ export interface Entitlements {
     resumes: { used: number; limit: number };
     interviews: { used: number; limit: number };
   } | null;
+  freeUsage: FreeUsage | null;
   canGenerateResume: boolean;
   canRunInterview: boolean;
 }
@@ -82,13 +88,22 @@ export const useEntitlements = () => {
     }
   }, [session?.access_token, fetchEntitlements]);
 
+  // Computed properties
+  const isPro = entitlements?.plan === 'PRO';
+  const isTrial = entitlements?.plan === 'FREE_TRIAL';
+  const hasFreeCredits = (entitlements?.freeUsage?.resumes?.used ?? 0) < (entitlements?.freeUsage?.resumes?.limit ?? 0);
+  const freeResumesRemaining = Math.max(0, (entitlements?.freeUsage?.resumes?.limit ?? 0) - (entitlements?.freeUsage?.resumes?.used ?? 0));
+
   return {
     entitlements,
     loading,
     error,
     refresh: fetchEntitlements,
     incrementUsage,
-    isPro: entitlements?.plan === 'PRO',
+    isPro,
+    isTrial,
+    hasFreeCredits,
+    freeResumesRemaining,
     canGenerateResume: entitlements?.canGenerateResume ?? false,
     canRunInterview: entitlements?.canRunInterview ?? false,
   };

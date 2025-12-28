@@ -18,6 +18,23 @@ const PRO_LIMITS = {
   interviews: 10,
 };
 
+// Free tier limits
+const FREE_LIMITS = {
+  resumes: 3,
+};
+
+// Get current month start date (first day of month)
+function getCurrentMonthStart(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+}
+
+// Get next month start date (for reset info)
+function getNextMonthStart(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -48,7 +65,7 @@ serve(async (req) => {
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "active")
-      .single();
+      .maybeSingle();
 
     let isPro = !!subscription;
     logStep("DB subscription check", { isPro, subscriptionId: subscription?.stripe_subscription_id });
@@ -83,7 +100,7 @@ serve(async (req) => {
                 .from("billing_customers")
                 .select("id")
                 .eq("user_id", user.id)
-                .single();
+                .maybeSingle();
 
               if (existingCustomer) {
                 await supabaseClient
@@ -106,7 +123,7 @@ serve(async (req) => {
                 .from("billing_subscriptions")
                 .select("id")
                 .eq("stripe_subscription_id", stripeSub.id)
-                .single();
+                .maybeSingle();
 
               if (existingSub) {
                 await supabaseClient
@@ -141,7 +158,7 @@ serve(async (req) => {
                 .select("*")
                 .eq("user_id", user.id)
                 .eq("status", "active")
-                .single();
+                .maybeSingle();
 
               subscription = syncedSub;
 
@@ -151,7 +168,7 @@ serve(async (req) => {
                 .select("id")
                 .eq("user_id", user.id)
                 .gte("period_end", new Date().toISOString())
-                .single();
+                .maybeSingle();
 
               if (!existingLedger) {
                 await supabaseClient
@@ -196,7 +213,7 @@ serve(async (req) => {
         .eq("user_id", user.id)
         .eq("period_start", subscription.current_period_start)
         .eq("period_end", subscription.current_period_end)
-        .single();
+        .maybeSingle();
 
       if (usageData) {
         usage = {
@@ -207,8 +224,40 @@ serve(async (req) => {
       logStep("Usage check", usage);
     }
 
+    // Get free tier usage for non-pro users
+    let freeUsage = { resumes_used: 0 };
+    const monthStart = getCurrentMonthStart();
+    const nextMonthStart = getNextMonthStart();
+
+    if (!isPro) {
+      const { data: freeUsageData } = await supabaseClient
+        .from("free_usage_ledger")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("month_start", monthStart)
+        .maybeSingle();
+
+      if (freeUsageData) {
+        freeUsage = {
+          resumes_used: freeUsageData.resumes_used,
+        };
+      }
+      logStep("Free usage check", { ...freeUsage, monthStart });
+    }
+
+    // Calculate free resumes remaining
+    const freeResumesRemaining = FREE_LIMITS.resumes - freeUsage.resumes_used;
+
+    // Determine plan tier
+    let plan: 'PRO' | 'FREE_TRIAL' | 'FREE_BYOK' = 'FREE_TRIAL';
+    if (isPro) {
+      plan = 'PRO';
+    } else if (hasApiKeys) {
+      plan = 'FREE_BYOK';
+    }
+
     const response = {
-      plan: isPro ? "PRO" : "FREE_BYOK",
+      plan,
       hasApiKeys,
       subscription: subscription ? {
         status: subscription.status,
@@ -219,9 +268,13 @@ serve(async (req) => {
         resumes: { used: usage.resumes_used, limit: PRO_LIMITS.resumes },
         interviews: { used: usage.interviews_used, limit: PRO_LIMITS.interviews },
       } : null,
+      freeUsage: !isPro ? {
+        resumes: { used: freeUsage.resumes_used, limit: FREE_LIMITS.resumes },
+        resetsOn: nextMonthStart,
+      } : null,
       canGenerateResume: isPro 
         ? usage.resumes_used < PRO_LIMITS.resumes 
-        : hasApiKeys,
+        : (freeResumesRemaining > 0 || hasApiKeys),
       canRunInterview: isPro 
         ? usage.interviews_used < PRO_LIMITS.interviews 
         : hasApiKeys,

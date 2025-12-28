@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Key, AlertTriangle, Calendar } from 'lucide-react';
+import { Sparkles, Key, AlertTriangle, Calendar, Gift } from 'lucide-react';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ interface CreditsDisplayProps {
 }
 
 const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ type, showUpgradePrompt = true }) => {
-  const { entitlements, loading, isPro, canGenerateResume, canRunInterview } = useEntitlements();
+  const { entitlements, loading, isPro, isTrial, freeResumesRemaining, canGenerateResume, canRunInterview } = useEntitlements();
 
   if (loading || !entitlements) {
     return (
@@ -24,6 +24,7 @@ const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ type, showUpgradePrompt
 
   const canProceed = type === 'resume' ? canGenerateResume : canRunInterview;
   const usage = entitlements.usage;
+  const freeUsage = entitlements.freeUsage;
   const subscription = entitlements.subscription;
 
   // Pro user display
@@ -71,12 +72,70 @@ const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ type, showUpgradePrompt
     );
   }
 
-  // Free BYOK user display
+  // Free trial display for resumes
+  if (type === 'resume' && freeUsage) {
+    const hasCredits = freeResumesRemaining > 0;
+    const isLow = freeResumesRemaining === 1;
+
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Gift className="w-4 h-4 text-primary" />
+          <span className={`text-sm font-medium ${!hasCredits ? 'text-destructive' : isLow ? 'text-warning' : 'text-foreground'}`}>
+            Free resumes: {freeResumesRemaining}/{freeUsage.resumes.limit}
+          </span>
+          <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+            TRIAL
+          </Badge>
+        </div>
+        
+        {freeUsage.resetsOn && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="w-3 h-3" />
+            <span>Resets {format(new Date(freeUsage.resetsOn), 'MMM d, yyyy')}</span>
+          </div>
+        )}
+        
+        {!hasCredits && showUpgradePrompt && (
+          <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg mt-1">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="text-warning font-medium">Free credits exhausted</p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  {entitlements.hasApiKeys 
+                    ? 'You can continue using your own API keys.'
+                    : 'Connect API keys or upgrade to Pro to continue.'}
+                </p>
+                {!entitlements.hasApiKeys && (
+                  <div className="flex gap-2 mt-2">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/settings/api-keys">Connect Keys</Link>
+                    </Button>
+                    <Button asChild size="sm" className="bg-gradient-aurora text-background">
+                      <Link to="/pricing">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Upgrade
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Free BYOK user display (for interviews or after trial)
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <Key className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Using your own API keys</span>
+        <span className="text-sm text-muted-foreground">
+          {type === 'interview' ? 'Interviews require API keys or Pro' : 'Using your own API keys'}
+        </span>
         <Badge variant="outline" className="text-xs">FREE</Badge>
       </div>
       
