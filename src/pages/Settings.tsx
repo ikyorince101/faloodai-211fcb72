@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Moon, Download, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Download, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { useMotion, MotionIntensity } from '@/contexts/MotionContext';
+import { useTheme, Theme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+
+const themeOptions: { value: Theme; label: string; description: string; icon: typeof Moon }[] = [
+  { value: 'dark', label: 'Night Sky', description: 'Default dark theme', icon: Moon },
+  { value: 'light', label: 'Light Mode', description: 'Bright and clean', icon: Sun },
+];
 
 const motionOptions: { value: MotionIntensity; label: string; description: string }[] = [
   { value: 'off', label: 'Off', description: 'No animations' },
@@ -17,6 +23,7 @@ const motionOptions: { value: MotionIntensity; label: string; description: strin
 
 const SettingsPage: React.FC = () => {
   const { intensity, setIntensity, prefersReducedMotion } = useMotion();
+  const { theme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -151,14 +158,27 @@ const SettingsPage: React.FC = () => {
           <h2 className="text-lg font-medium text-foreground">Theme</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-4 rounded-xl border border-primary bg-primary/10">
-            <p className="font-medium text-foreground">Night Sky</p>
-            <p className="text-xs text-muted-foreground">Default dark theme</p>
-          </div>
-          <div className="p-4 rounded-xl border border-border bg-secondary/50 opacity-50 cursor-not-allowed">
-            <p className="font-medium text-foreground">Light Mode</p>
-            <p className="text-xs text-muted-foreground">Coming soon</p>
-          </div>
+          {themeOptions.map((option) => {
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.value}
+                onClick={() => setTheme(option.value)}
+                className={cn(
+                  "p-4 rounded-xl border transition-all text-left flex items-start gap-3",
+                  theme === option.value
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-secondary/50 hover:border-primary/50"
+                )}
+              >
+                <Icon className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">{option.label}</p>
+                  <p className="text-xs text-muted-foreground">{option.description}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

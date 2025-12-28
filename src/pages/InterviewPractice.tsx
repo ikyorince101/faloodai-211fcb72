@@ -239,6 +239,7 @@ const InterviewPractice: React.FC = () => {
                 return (
                   <div
                     key={session.id}
+                    onClick={() => navigate(`/session/${session.id}/debrief`)}
                     className="glass-card p-4 flex items-center justify-between cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                   >
                     <div className="flex items-center gap-4">
