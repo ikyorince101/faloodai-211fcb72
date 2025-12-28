@@ -112,16 +112,42 @@ serve(async (req) => {
 
         // Encrypt and store
         const encryptedKey = encryptKey(apiKey);
-        const { error } = await supabaseClient
+        
+        // First check if key exists, then update or insert
+        const { data: existing } = await supabaseClient
           .from("api_keys")
-          .upsert({
-            user_id: user.id,
-            provider,
-            encrypted_key: encryptedKey,
-            last_verified_at: new Date().toISOString(),
-          }, { onConflict: "user_id,provider" });
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("provider", provider)
+          .maybeSingle();
 
-        if (error) throw error;
+        let error;
+        if (existing) {
+          const result = await supabaseClient
+            .from("api_keys")
+            .update({
+              encrypted_key: encryptedKey,
+              last_verified_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+          error = result.error;
+        } else {
+          const result = await supabaseClient
+            .from("api_keys")
+            .insert({
+              user_id: user.id,
+              provider,
+              encrypted_key: encryptedKey,
+              last_verified_at: new Date().toISOString(),
+            });
+          error = result.error;
+        }
+
+        if (error) {
+          logStep("Database error", { error: error.message, code: error.code });
+          throw error;
+        }
         logStep("Key saved", { provider });
 
         return new Response(
