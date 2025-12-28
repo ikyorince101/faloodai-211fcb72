@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
 
 const navItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard', description: 'Your command center' },
+  { path: '/app', icon: LayoutDashboard, label: 'Dashboard', description: 'Your command center' },
   { path: '/jobs', icon: Briefcase, label: 'Job Tracker', description: 'Pipeline & interviews' },
   { path: '/resume', icon: FileText, label: 'Resume Workspace', description: 'ATS-optimized versions' },
   { path: '/interview', icon: Mic, label: 'Interview Practice', description: 'Mock voice sessions' },

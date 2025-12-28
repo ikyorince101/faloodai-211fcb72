@@ -22,7 +22,7 @@ const AuthPage: React.FC = () => {
   // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/app');
     }
   }, [user, navigate]);
 
@@ -41,7 +41,7 @@ const AuthPage: React.FC = () => {
             setError(error.message);
           }
         } else {
-          navigate('/');
+          navigate('/app');
         }
       } else {
         const { error } = await signUp(email, password, fullName);
@@ -52,7 +52,7 @@ const AuthPage: React.FC = () => {
             setError(error.message);
           }
         } else {
-          navigate('/');
+          navigate('/app');
         }
       }
     } catch (err) {
@@ -69,7 +69,7 @@ const AuthPage: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/app`,
         },
       });
       if (error) {
