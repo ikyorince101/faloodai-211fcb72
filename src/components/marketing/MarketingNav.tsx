@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Sparkles, Menu, X, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMotion, MotionIntensity } from '@/contexts/MotionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,7 @@ const motionOptions: { value: MotionIntensity; label: string }[] = [
 const MarketingNav: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { intensity, setIntensity, prefersReducedMotion } = useMotion();
+  const { user } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
@@ -70,12 +72,20 @@ const MarketingNav: React.FC = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button asChild variant="ghost">
-            <Link to="/auth">Sign In</Link>
-          </Button>
-          <Button asChild className="bg-gradient-aurora text-background hover:opacity-90">
-            <Link to="/auth">Get Started</Link>
-          </Button>
+          {user ? (
+            <Button asChild className="bg-gradient-aurora text-background hover:opacity-90">
+              <Link to="/app">Go to Dashboard</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="ghost">
+                <Link to="/auth">Sign In</Link>
+              </Button>
+              <Button asChild className="bg-gradient-aurora text-background hover:opacity-90">
+                <Link to="/auth">Get Started</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -121,12 +131,20 @@ const MarketingNav: React.FC = () => {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button asChild variant="outline" className="flex-1">
-              <Link to="/auth" onClick={() => setMobileOpen(false)}>Sign In</Link>
-            </Button>
-            <Button asChild className="flex-1 bg-gradient-aurora text-background">
-              <Link to="/auth" onClick={() => setMobileOpen(false)}>Get Started</Link>
-            </Button>
+            {user ? (
+              <Button asChild className="flex-1 bg-gradient-aurora text-background">
+                <Link to="/app" onClick={() => setMobileOpen(false)}>Go to Dashboard</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="outline" className="flex-1">
+                  <Link to="/auth" onClick={() => setMobileOpen(false)}>Sign In</Link>
+                </Button>
+                <Button asChild className="flex-1 bg-gradient-aurora text-background">
+                  <Link to="/auth" onClick={() => setMobileOpen(false)}>Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
