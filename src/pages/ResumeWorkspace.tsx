@@ -597,6 +597,23 @@ const ResumeWorkspace: React.FC = () => {
                 )}
               </div>
 
+              {/* Improve with Feedback Button */}
+              {atsReport.issues.length > 0 && (
+                <Button
+                  onClick={async () => {
+                    const shouldRevalidate = await regenerateResume(atsReport);
+                    if (shouldRevalidate) {
+                      setTimeout(() => runATSValidation(false), 1000);
+                    }
+                  }}
+                  disabled={isRegenerating || isValidating}
+                  className="w-full gap-2 bg-gradient-aurora text-background"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {isRegenerating ? 'Improving Resume...' : 'Improve with Feedback'}
+                </Button>
+              )}
+
               {/* Export Buttons */}
               <div className="space-y-2 pt-2 border-t border-border">
                 <h4 className="text-sm font-medium text-foreground">Export</h4>
