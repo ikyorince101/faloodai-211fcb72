@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.parse-resume]
 verify_jwt = false
+
+[functions.parse-document]
+verify_jwt = false
