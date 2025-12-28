@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -38,19 +39,111 @@ serve(async (req) => {
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     
     const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id });
+    if (!user?.email) throw new Error("User not authenticated or email not available");
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Check for active subscription
-    const { data: subscription } = await supabaseClient
+    // Check for active subscription in database first
+    let { data: subscription } = await supabaseClient
       .from("billing_subscriptions")
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "active")
       .single();
 
-    const isPro = !!subscription;
-    logStep("Subscription check", { isPro, subscriptionId: subscription?.stripe_subscription_id });
+    let isPro = !!subscription;
+    logStep("DB subscription check", { isPro, subscriptionId: subscription?.stripe_subscription_id });
+
+    // If no subscription in DB, check Stripe directly and sync if found
+    if (!isPro) {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (stripeKey) {
+        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+        
+        // Find customer by email
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        
+        if (customers.data.length > 0) {
+          const customerId = customers.data[0].id;
+          logStep("Found Stripe customer", { customerId });
+
+          // Check for active subscription
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            status: "active",
+            limit: 1,
+          });
+
+          if (subscriptions.data.length > 0) {
+            const stripeSub = subscriptions.data[0];
+            logStep("Found active Stripe subscription", { subscriptionId: stripeSub.id });
+
+            // Sync to database - upsert billing_customer
+            await supabaseClient
+              .from("billing_customers")
+              .upsert({
+                user_id: user.id,
+                stripe_customer_id: customerId,
+              }, { onConflict: "user_id" });
+
+            // Upsert subscription
+            const priceId = stripeSub.items.data[0]?.price?.id;
+            const periodStart = new Date(stripeSub.current_period_start * 1000).toISOString();
+            const periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+
+            const { error: subError } = await supabaseClient
+              .from("billing_subscriptions")
+              .upsert({
+                user_id: user.id,
+                stripe_subscription_id: stripeSub.id,
+                status: stripeSub.status,
+                price_id: priceId,
+                current_period_start: periodStart,
+                current_period_end: periodEnd,
+                cancel_at_period_end: stripeSub.cancel_at_period_end,
+              }, { onConflict: "stripe_subscription_id" });
+
+            if (subError) {
+              logStep("Error syncing subscription", { error: subError.message });
+            } else {
+              logStep("Subscription synced to database");
+              isPro = true;
+              
+              // Refetch subscription from DB
+              const { data: syncedSub } = await supabaseClient
+                .from("billing_subscriptions")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("status", "active")
+                .single();
+              
+              subscription = syncedSub;
+
+              // Ensure usage ledger exists
+              const { data: existingLedger } = await supabaseClient
+                .from("usage_ledger")
+                .select("id")
+                .eq("user_id", user.id)
+                .eq("period_start", periodStart)
+                .eq("period_end", periodEnd)
+                .single();
+
+              if (!existingLedger) {
+                await supabaseClient
+                  .from("usage_ledger")
+                  .insert({
+                    user_id: user.id,
+                    period_start: periodStart,
+                    period_end: periodEnd,
+                    resumes_used: 0,
+                    interviews_used: 0,
+                  });
+                logStep("Created usage ledger for synced subscription");
+              }
+            }
+          }
+        }
+      }
+    }
 
     // Check for API keys if not pro
     let hasApiKeys = false;
