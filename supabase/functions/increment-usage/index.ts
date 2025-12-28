@@ -11,6 +11,12 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[INCREMENT-USAGE] ${step}${detailsStr}`);
 };
 
+// Get current month start date (first day of month)
+function getCurrentMonthStart(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -47,65 +53,114 @@ serve(async (req) => {
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "active")
-      .single();
+      .maybeSingle();
 
-    if (!subscription) {
-      // Free user - no usage tracking needed
-      logStep("Free user, no usage tracking");
-      return new Response(
-        JSON.stringify({ success: true, plan: "FREE_BYOK" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      );
+    // Pro user - track in usage_ledger
+    if (subscription) {
+      // Get or create usage ledger for current period
+      const { data: existingUsage } = await supabaseClient
+        .from("usage_ledger")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("period_start", subscription.current_period_start)
+        .eq("period_end", subscription.current_period_end)
+        .maybeSingle();
+
+      const column = type === "resume" ? "resumes_used" : "interviews_used";
+
+      if (existingUsage) {
+        // Increment existing usage
+        const newValue = (existingUsage[column] || 0) + 1;
+        const { error } = await supabaseClient
+          .from("usage_ledger")
+          .update({ [column]: newValue })
+          .eq("id", existingUsage.id);
+
+        if (error) throw error;
+        logStep("Pro usage incremented", { column, newValue });
+
+        return new Response(
+          JSON.stringify({ success: true, plan: "PRO", [column]: newValue }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      } else {
+        // Create new usage ledger entry
+        const newUsage = {
+          user_id: user.id,
+          period_start: subscription.current_period_start,
+          period_end: subscription.current_period_end,
+          resumes_used: type === "resume" ? 1 : 0,
+          interviews_used: type === "interview" ? 1 : 0,
+        };
+
+        const { error } = await supabaseClient
+          .from("usage_ledger")
+          .insert(newUsage);
+
+        if (error) throw error;
+        logStep("New pro usage ledger created", newUsage);
+
+        return new Response(
+          JSON.stringify({ success: true, plan: "PRO", [column]: 1 }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
     }
 
-    // Get or create usage ledger for current period
-    const { data: existingUsage } = await supabaseClient
-      .from("usage_ledger")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("period_start", subscription.current_period_start)
-      .eq("period_end", subscription.current_period_end)
-      .single();
+    // Free user - track resume usage in free_usage_ledger
+    if (type === "resume") {
+      const monthStart = getCurrentMonthStart();
 
-    const column = type === "resume" ? "resumes_used" : "interviews_used";
+      // Get or create free usage ledger for current month
+      const { data: existingFreeUsage } = await supabaseClient
+        .from("free_usage_ledger")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("month_start", monthStart)
+        .maybeSingle();
 
-    if (existingUsage) {
-      // Increment existing usage
-      const newValue = (existingUsage[column] || 0) + 1;
-      const { error } = await supabaseClient
-        .from("usage_ledger")
-        .update({ [column]: newValue })
-        .eq("id", existingUsage.id);
+      if (existingFreeUsage) {
+        // Increment existing usage
+        const newValue = (existingFreeUsage.resumes_used || 0) + 1;
+        const { error } = await supabaseClient
+          .from("free_usage_ledger")
+          .update({ resumes_used: newValue })
+          .eq("id", existingFreeUsage.id);
 
-      if (error) throw error;
-      logStep("Usage incremented", { column, newValue });
+        if (error) throw error;
+        logStep("Free resume usage incremented", { resumes_used: newValue, monthStart });
 
-      return new Response(
-        JSON.stringify({ success: true, [column]: newValue }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      );
-    } else {
-      // Create new usage ledger entry
-      const newUsage = {
-        user_id: user.id,
-        period_start: subscription.current_period_start,
-        period_end: subscription.current_period_end,
-        resumes_used: type === "resume" ? 1 : 0,
-        interviews_used: type === "interview" ? 1 : 0,
-      };
+        return new Response(
+          JSON.stringify({ success: true, plan: "FREE", resumes_used: newValue }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      } else {
+        // Create new free usage ledger entry
+        const { error } = await supabaseClient
+          .from("free_usage_ledger")
+          .insert({
+            user_id: user.id,
+            month_start: monthStart,
+            resumes_used: 1,
+          });
 
-      const { error } = await supabaseClient
-        .from("usage_ledger")
-        .insert(newUsage);
+        if (error) throw error;
+        logStep("New free usage ledger created", { resumes_used: 1, monthStart });
 
-      if (error) throw error;
-      logStep("New usage ledger created", newUsage);
-
-      return new Response(
-        JSON.stringify({ success: true, [column]: 1 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      );
+        return new Response(
+          JSON.stringify({ success: true, plan: "FREE", resumes_used: 1 }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
     }
+
+    // Free user trying to use interview - requires API keys
+    logStep("Free user interview attempt - requires API keys");
+    return new Response(
+      JSON.stringify({ success: true, plan: "FREE_BYOK", message: "Interviews require API keys or Pro subscription" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message });

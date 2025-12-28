@@ -1,5 +1,5 @@
 import React from 'react';
-import { Key, Sparkles, Calendar, CreditCard } from 'lucide-react';
+import { Key, Sparkles, Calendar, CreditCard, Gift } from 'lucide-react';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useMotion } from '@/contexts/MotionContext';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const PlanBadge: React.FC = () => {
-  const { entitlements, loading, isPro } = useEntitlements();
+  const { entitlements, loading, isPro, isTrial, freeResumesRemaining } = useEntitlements();
   const { intensity } = useMotion();
 
   if (loading || !entitlements) {
@@ -19,6 +19,7 @@ const PlanBadge: React.FC = () => {
 
   const subscription = entitlements.subscription;
   const usage = entitlements.usage;
+  const freeUsage = entitlements.freeUsage;
 
   if (isPro && subscription) {
     const renewalDate = subscription.currentPeriodEnd 
@@ -72,6 +73,47 @@ const PlanBadge: React.FC = () => {
     );
   }
 
+  // Free trial tier (user has free credits remaining)
+  if (isTrial && freeUsage) {
+    const isLow = freeResumesRemaining <= 1;
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium cursor-default border border-primary/20">
+            <Gift className="w-3 h-3" />
+            <span>TRIAL</span>
+            {isLow && (
+              <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs">
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <Gift className="w-4 h-4" />
+              Free Trial
+            </div>
+            <div className="text-xs">
+              <span className="text-muted-foreground">Free resumes:</span>{' '}
+              <span className={isLow ? 'text-warning' : ''}>{freeResumesRemaining} left</span>
+              <span className="text-muted-foreground"> / {freeUsage.resumes.limit}</span>
+            </div>
+            {freeUsage.resetsOn && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Calendar className="w-3 h-3" />
+                Resets {format(new Date(freeUsage.resetsOn), 'MMM d')}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Interviews require API keys or Pro subscription
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
   // Free BYOK tier
   return (
     <Tooltip>
@@ -95,6 +137,11 @@ const PlanBadge: React.FC = () => {
               ? 'Using your own API keys'
               : 'Connect API keys to use AI features'}
           </p>
+          {freeUsage && freeResumesRemaining <= 0 && (
+            <p className="text-xs text-warning">
+              Free resume credits exhausted
+            </p>
+          )}
         </div>
       </TooltipContent>
     </Tooltip>
