@@ -55,11 +55,13 @@ const ResumeWorkspace: React.FC = () => {
   const [resumeName, setResumeName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [atsReport, setAtsReport] = useState<ATSReport | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [showSealStamp, setShowSealStamp] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [regenerationAttempt, setRegenerationAttempt] = useState(0);
 
   const selectedResume = useMemo(() => {
     return resumes.find(r => r.id === selectedResumeId) || null;
@@ -71,7 +73,47 @@ const ResumeWorkspace: React.FC = () => {
 
   const resumeContent = selectedResume?.content as Record<string, unknown> | null;
 
-  const runATSValidation = useCallback(async () => {
+  const regenerateResume = useCallback(async (currentReport: ATSReport) => {
+    if (!selectedResume || !resumeContent) return;
+
+    setIsRegenerating(true);
+    try {
+      const jobDesc = jdText || selectedJob?.jd_text || '';
+      
+      toast.info(`Score ${currentReport.score}% is below 90%. Regenerating resume with ATS feedback...`);
+      
+      const { data, error } = await supabase.functions.invoke('regenerate-resume', {
+        body: { 
+          resumeContent, 
+          atsReport: currentReport,
+          jobDescription: jobDesc,
+          emphasis: resumeContent.emphasis || 'skills'
+        }
+      });
+
+      if (error) throw error;
+
+      // Update the resume with improved content
+      await updateResume.mutateAsync({
+        id: selectedResume.id,
+        content: data.improvedResume,
+      });
+
+      toast.success(`Resume regenerated from ${data.previousScore}% score. Re-validating...`);
+      setRegenerationAttempt(prev => prev + 1);
+      
+      // Return true to indicate we should re-validate
+      return true;
+    } catch (error) {
+      console.error('Regeneration error:', error);
+      toast.error('Failed to regenerate resume');
+      return false;
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [selectedResume, resumeContent, jdText, selectedJob, updateResume]);
+
+  const runATSValidation = useCallback(async (autoRegenerate = true) => {
     if (!selectedResume || !resumeContent) return;
 
     setIsValidating(true);
@@ -84,23 +126,35 @@ const ResumeWorkspace: React.FC = () => {
 
       if (error) throw error;
       
-      setAtsReport(data as ATSReport);
+      const report = data as ATSReport;
+      setAtsReport(report);
       
       // Update resume with new score
       await updateResume.mutateAsync({
         id: selectedResume.id,
-        ats_score: data.score,
-        ats_report: data,
+        ats_score: report.score,
+        ats_report: JSON.parse(JSON.stringify(report)),
       });
       
-      toast.success(`ATS Score: ${data.score}/100`);
+      // If score < 90% and we haven't already regenerated too many times, auto-regenerate
+      if (report.score < 90 && autoRegenerate && regenerationAttempt < 2) {
+        const shouldRevalidate = await regenerateResume(report);
+        if (shouldRevalidate) {
+          // Re-run validation after regeneration (but don't auto-regenerate again to prevent infinite loop)
+          setTimeout(() => runATSValidation(false), 1000);
+        }
+      } else if (report.score >= 90) {
+        toast.success(`ATS Score: ${report.score}/100 - Ready for submission!`);
+      } else {
+        toast.success(`ATS Score: ${report.score}/100`);
+      }
     } catch (error) {
       console.error('Validation error:', error);
       toast.error('Failed to validate resume');
     } finally {
       setIsValidating(false);
     }
-  }, [selectedResume, resumeContent, jdText, selectedJob, updateResume]);
+  }, [selectedResume, resumeContent, jdText, selectedJob, updateResume, regenerateResume, regenerationAttempt]);
 
   const handleGenerate = async () => {
     if (!resumeName.trim()) {
@@ -228,7 +282,7 @@ const ResumeWorkspace: React.FC = () => {
           <p className="text-muted-foreground">Create ATS-optimized resume versions for each job.</p>
         </div>
         {resumes.length > 0 && (
-          <Select value={selectedResumeId || ''} onValueChange={(val) => { setSelectedResumeId(val); setAtsReport(null); }}>
+          <Select value={selectedResumeId || ''} onValueChange={(val) => { setSelectedResumeId(val); setAtsReport(null); setRegenerationAttempt(0); }}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select version..." />
             </SelectTrigger>
@@ -410,12 +464,12 @@ const ResumeWorkspace: React.FC = () => {
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={runATSValidation}
-                disabled={isValidating}
+                onClick={() => runATSValidation(true)}
+                disabled={isValidating || isRegenerating}
                 className="gap-1"
               >
-                <RefreshCw className={`w-3 h-3 ${isValidating ? 'animate-spin' : ''}`} />
-                {isValidating ? 'Validating...' : 'Validate'}
+                <RefreshCw className={`w-3 h-3 ${isValidating || isRegenerating ? 'animate-spin' : ''}`} />
+                {isRegenerating ? 'Improving...' : isValidating ? 'Validating...' : 'Validate'}
               </Button>
             )}
           </div>
