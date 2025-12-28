@@ -5,6 +5,7 @@ import { useJobs } from '@/hooks/useJobs';
 import { useStories } from '@/hooks/useStories';
 import { useProfile } from '@/hooks/useProfile';
 import { useMotion } from '@/contexts/MotionContext';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import CreditsDisplay from '@/components/billing/CreditsDisplay';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -55,6 +57,7 @@ const InterviewPractice: React.FC = () => {
   const { data: profile } = useProfile();
   const createSession = useCreateSession();
   const { intensity } = useMotion();
+  const { canRunInterview, incrementUsage, isPro } = useEntitlements();
 
   const [showNewSession, setShowNewSession] = useState(false);
   const [mode, setMode] = useState<PracticeMode>('behavioral');
@@ -130,6 +133,11 @@ const InterviewPractice: React.FC = () => {
   };
 
   const handleStartSession = async () => {
+    if (!canRunInterview) {
+      toast.error('You need API keys or Pro subscription to run interviews');
+      return;
+    }
+
     try {
       const session = await createSession.mutateAsync({
         mode,
@@ -138,6 +146,11 @@ const InterviewPractice: React.FC = () => {
         job_id: selectedJobId !== 'none' ? selectedJobId : null,
         status: 'in_progress',
       });
+
+      // Increment usage for Pro users at session start
+      if (isPro) {
+        await incrementUsage('interview');
+      }
 
       toast.success('Practice session started!');
       setShowNewSession(false);
@@ -440,13 +453,18 @@ const InterviewPractice: React.FC = () => {
                 </div>
               )}
 
+              {/* Credits Display */}
+              <div className="pt-4 border-t border-border">
+                <CreditsDisplay type="interview" />
+              </div>
+
               <div className="flex gap-2 pt-4">
                 <Button variant="outline" onClick={() => setShowNewSession(false)} className="flex-1">
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleGeneratePlan} 
-                  disabled={isGenerating}
+                  disabled={isGenerating || !canRunInterview}
                   className="flex-1 gap-2"
                 >
                   {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -533,7 +551,7 @@ const InterviewPractice: React.FC = () => {
                 <Button variant="outline" onClick={() => setQuestionPlan(null)} className="flex-1">
                   Back to Setup
                 </Button>
-                <Button onClick={handleStartSession} className="flex-1 gap-2 bg-gradient-aurora text-background">
+                <Button onClick={handleStartSession} disabled={!canRunInterview} className="flex-1 gap-2 bg-gradient-aurora text-background">
                   <Play className="w-4 h-4" />
                   Start Session
                 </Button>
