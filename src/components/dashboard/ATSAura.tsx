@@ -35,12 +35,9 @@ const ATSAura: React.FC<ATSAuraProps> = ({ score, size = 'md', showLabel = true,
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div className={cn("relative", sizeClasses[size])}>
-        {/* Outer glow */}
+        {/* Outer glow - static, no blinking */}
         <div 
-          className={cn(
-            "absolute inset-0 rounded-full opacity-30 blur-md",
-            intensity === 'magical' && 'animate-pulse'
-          )}
+          className="absolute inset-0 rounded-full opacity-20 blur-md"
           style={{ background: getScoreColor() }}
         />
         
