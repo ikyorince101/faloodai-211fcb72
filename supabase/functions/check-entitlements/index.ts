@@ -77,37 +77,64 @@ serve(async (req) => {
             const stripeSub = subscriptions.data[0];
             logStep("Found active Stripe subscription", { subscriptionId: stripeSub.id });
 
-            // Sync to database - upsert billing_customer
-            await supabaseClient
-              .from("billing_customers")
-              .upsert({
-                user_id: user.id,
-                stripe_customer_id: customerId,
-              }, { onConflict: "user_id" });
+            try {
+              // Sync billing_customer - check if exists first
+              const { data: existingCustomer } = await supabaseClient
+                .from("billing_customers")
+                .select("id")
+                .eq("user_id", user.id)
+                .single();
 
-            // Upsert subscription
-            const priceId = stripeSub.items.data[0]?.price?.id;
-            const periodStart = new Date(stripeSub.current_period_start * 1000).toISOString();
-            const periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+              if (existingCustomer) {
+                await supabaseClient
+                  .from("billing_customers")
+                  .update({ stripe_customer_id: customerId })
+                  .eq("user_id", user.id);
+              } else {
+                await supabaseClient
+                  .from("billing_customers")
+                  .insert({ user_id: user.id, stripe_customer_id: customerId });
+              }
+              logStep("Billing customer synced");
 
-            const { error: subError } = await supabaseClient
-              .from("billing_subscriptions")
-              .upsert({
-                user_id: user.id,
-                stripe_subscription_id: stripeSub.id,
-                status: stripeSub.status,
-                price_id: priceId,
-                current_period_start: periodStart,
-                current_period_end: periodEnd,
-                cancel_at_period_end: stripeSub.cancel_at_period_end,
-              }, { onConflict: "stripe_subscription_id" });
+              // Sync subscription - check if exists first
+              const priceId = stripeSub.items.data[0]?.price?.id;
+              const periodStart = new Date(stripeSub.current_period_start * 1000).toISOString();
+              const periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
 
-            if (subError) {
-              logStep("Error syncing subscription", { error: subError.message });
-            } else {
+              const { data: existingSub } = await supabaseClient
+                .from("billing_subscriptions")
+                .select("id")
+                .eq("stripe_subscription_id", stripeSub.id)
+                .single();
+
+              if (existingSub) {
+                await supabaseClient
+                  .from("billing_subscriptions")
+                  .update({
+                    status: stripeSub.status,
+                    price_id: priceId,
+                    current_period_start: periodStart,
+                    current_period_end: periodEnd,
+                    cancel_at_period_end: stripeSub.cancel_at_period_end,
+                  })
+                  .eq("id", existingSub.id);
+              } else {
+                await supabaseClient
+                  .from("billing_subscriptions")
+                  .insert({
+                    user_id: user.id,
+                    stripe_subscription_id: stripeSub.id,
+                    status: stripeSub.status,
+                    price_id: priceId,
+                    current_period_start: periodStart,
+                    current_period_end: periodEnd,
+                    cancel_at_period_end: stripeSub.cancel_at_period_end,
+                  });
+              }
               logStep("Subscription synced to database");
               isPro = true;
-              
+
               // Refetch subscription from DB
               const { data: syncedSub } = await supabaseClient
                 .from("billing_subscriptions")
@@ -115,7 +142,7 @@ serve(async (req) => {
                 .eq("user_id", user.id)
                 .eq("status", "active")
                 .single();
-              
+
               subscription = syncedSub;
 
               // Ensure usage ledger exists
@@ -123,8 +150,7 @@ serve(async (req) => {
                 .from("usage_ledger")
                 .select("id")
                 .eq("user_id", user.id)
-                .eq("period_start", periodStart)
-                .eq("period_end", periodEnd)
+                .gte("period_end", new Date().toISOString())
                 .single();
 
               if (!existingLedger) {
@@ -139,6 +165,10 @@ serve(async (req) => {
                   });
                 logStep("Created usage ledger for synced subscription");
               }
+            } catch (syncError) {
+              logStep("Sync error", { error: syncError instanceof Error ? syncError.message : String(syncError) });
+              // Still mark as Pro since we found the subscription in Stripe
+              isPro = true;
             }
           }
         }
