@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.manage-api-keys]
 verify_jwt = false
+
+[functions.parse-resume]
+verify_jwt = false
