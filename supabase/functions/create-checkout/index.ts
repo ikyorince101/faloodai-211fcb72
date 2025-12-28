@@ -65,11 +65,11 @@ serve(async (req) => {
     }
 
     const { priceId } = await req.json().catch(() => ({}));
-    const finalPriceId = priceId || Deno.env.get("STRIPE_PRO_PRICE_ID");
+    // Default to Pro Plan price ID
+    const PRO_PRICE_ID = "price_1SjRO9Q7zbKX28e9PXHE1Qhg";
+    const finalPriceId = priceId || PRO_PRICE_ID;
 
-    if (!finalPriceId) {
-      throw new Error("No price ID configured");
-    }
+    logStep("Using price ID", { priceId: finalPriceId });
 
     const origin = req.headers.get("origin") || "http://localhost:5173";
 
