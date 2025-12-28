@@ -89,7 +89,28 @@ const SettingsPage: React.FC = () => {
     setIsDeleting(true);
 
     try {
-      // Delete all user data (cascade should handle most, but be explicit)
+      // Delete audio files from storage
+      const { data: audioFiles } = await supabase.storage
+        .from('audio')
+        .list(user.id);
+      
+      if (audioFiles && audioFiles.length > 0) {
+        const filePaths = audioFiles.map(f => `${user.id}/${f.name}`);
+        await supabase.storage.from('audio').remove(filePaths);
+      }
+
+      // First get all practice session IDs to delete related events
+      const { data: sessions } = await supabase
+        .from('practice_sessions')
+        .select('id')
+        .eq('user_id', user.id);
+      
+      if (sessions && sessions.length > 0) {
+        const sessionIds = sessions.map(s => s.id);
+        await supabase.from('practice_events').delete().in('session_id', sessionIds);
+      }
+
+      // Delete all user data (including api_keys, billing, usage)
       await Promise.all([
         supabase.from('practice_sessions').delete().eq('user_id', user.id),
         supabase.from('interview_rounds').delete().eq('user_id', user.id),
@@ -97,6 +118,10 @@ const SettingsPage: React.FC = () => {
         supabase.from('stories').delete().eq('user_id', user.id),
         supabase.from('jobs').delete().eq('user_id', user.id),
         supabase.from('profiles').delete().eq('user_id', user.id),
+        supabase.from('api_keys').delete().eq('user_id', user.id),
+        supabase.from('usage_ledger').delete().eq('user_id', user.id),
+        supabase.from('billing_subscriptions').delete().eq('user_id', user.id),
+        supabase.from('billing_customers').delete().eq('user_id', user.id),
       ]);
 
       // Sign out
