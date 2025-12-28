@@ -7,16 +7,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_PATH_LENGTH = 500;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// Validate audio path format: should be {uuid}/{filename}
+function validateAudioPath(path: unknown): string | null {
+  if (typeof path !== "string") return null;
+  if (path.length === 0 || path.length > MAX_PATH_LENGTH) return null;
+  
+  // Reject path traversal attempts
+  if (path.includes("..") || path.startsWith("/") || path.includes("://")) {
+    return null;
+  }
+  
+  // Should match pattern like: user-id/filename.webm
+  const pathPattern = /^[a-zA-Z0-9\-_]+\/[a-zA-Z0-9\-_.]+$/;
+  if (!pathPattern.test(path)) {
+    return null;
+  }
+  
+  return path;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { audioPath } = await req.json();
+    const body = await req.json();
+    const audioPath = validateAudioPath(body.audioPath);
     
     if (!audioPath) {
-      return new Response(JSON.stringify({ error: 'Audio path is required' }), {
+      return new Response(JSON.stringify({ error: 'Invalid audio path format' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -46,13 +70,31 @@ serve(async (req) => {
 
     console.log('Got signed URL, fetching audio...');
 
-    // Download the audio file
+    // Download the audio file with size check
     const audioResponse = await fetch(urlData.signedUrl);
     if (!audioResponse.ok) {
       throw new Error('Failed to download audio file');
     }
 
+    // Check content length if available
+    const contentLength = audioResponse.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
+      return new Response(JSON.stringify({ error: 'Audio file too large (max 10MB)' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const audioBlob = await audioResponse.blob();
+    
+    // Additional size check after download
+    if (audioBlob.size > MAX_FILE_SIZE) {
+      return new Response(JSON.stringify({ error: 'Audio file too large (max 10MB)' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const base64Audio = await blobToBase64(audioBlob);
 
     console.log('Audio fetched, transcribing with AI...');
