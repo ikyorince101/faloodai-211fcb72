@@ -20,6 +20,7 @@ import SessionDebrief from "./pages/SessionDebrief";
 import StoryBank from "./pages/StoryBank";
 import ProfileHub from "./pages/ProfileHub";
 import SettingsPage from "./pages/Settings";
+import BillingPage from "./pages/Billing";
 import Analytics from "./pages/Analytics";
 import AuthPage from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -59,6 +60,7 @@ const App = () => (
                 <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfileHub /></AppLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
                 <Route path="/settings/api-keys" element={<ProtectedRoute><AppLayout><ApiKeysPage /></AppLayout></ProtectedRoute>} />
+                <Route path="/settings/billing" element={<ProtectedRoute><AppLayout><BillingPage /></AppLayout></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
                 
                 <Route path="*" element={<NotFound />} />

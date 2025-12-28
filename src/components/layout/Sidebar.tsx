@@ -10,7 +10,8 @@ import {
   Sparkles,
   Settings,
   X,
-  BarChart2
+  BarChart2,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
@@ -113,13 +114,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
         })}
       </nav>
 
-      {/* Settings Link */}
-      <div className="p-3 border-t border-sidebar-border">
+      {/* Settings & Billing Links */}
+      <div className="p-3 border-t border-sidebar-border space-y-1">
+        <NavLink
+          to="/settings/billing"
+          onClick={onMobileClose}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300",
+            "hover:bg-sidebar-accent/50",
+            location.pathname === '/settings/billing' && "nav-link-active"
+          )}
+        >
+          <div className={cn(
+            "p-2 rounded-lg transition-all duration-300",
+            location.pathname === '/settings/billing'
+              ? "bg-primary/20 text-primary"
+              : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+          )}>
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <span className="text-sm font-medium text-sidebar-foreground">Billing</span>
+        </NavLink>
         <NavLink
           to="/settings"
           onClick={onMobileClose}
           className={cn(
-            "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300",
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300",
             "hover:bg-sidebar-accent/50",
             location.pathname === '/settings' && "nav-link-active"
           )}

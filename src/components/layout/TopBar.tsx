@@ -3,6 +3,7 @@ import { Menu } from 'lucide-react';
 import Breadcrumb from './Breadcrumb';
 import CreateMenu from './CreateMenu';
 import AccountMenu from './AccountMenu';
+import PlanBadge from '@/components/billing/PlanBadge';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface TopBarProps {
@@ -29,6 +30,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
         {/* Right side - Actions */}
         {user && (
           <div className="flex items-center gap-3">
+            <PlanBadge />
             <CreateMenu />
             <AccountMenu />
           </div>

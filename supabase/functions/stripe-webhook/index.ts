@@ -186,23 +186,35 @@ async function ensureUsageLedger(userId: string, subscription: Stripe.Subscripti
   const periodStart = new Date(subscription.current_period_start * 1000).toISOString();
   const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
 
+  // Check if usage ledger already exists for this period
+  const { data: existing } = await supabase
+    .from("usage_ledger")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("period_start", periodStart)
+    .eq("period_end", periodEnd)
+    .single();
+
+  if (existing) {
+    logStep("Usage ledger already exists", { userId, periodStart });
+    return;
+  }
+
+  // Create new usage ledger for the billing period
   const { error } = await supabase
     .from("usage_ledger")
-    .upsert({
+    .insert({
       user_id: userId,
       period_start: periodStart,
       period_end: periodEnd,
       resumes_used: 0,
       interviews_used: 0,
-    }, { 
-      onConflict: "user_id,period_start,period_end",
-      ignoreDuplicates: true 
     });
 
   if (error) {
     logStep("Error creating usage ledger", { error: error.message });
   } else {
-    logStep("Usage ledger ensured", { userId, periodStart, periodEnd });
+    logStep("Usage ledger created", { userId, periodStart, periodEnd });
   }
 }
 
