@@ -1,8 +1,10 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Check, X, Sparkles, Key, Zap, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMotion } from '@/contexts/MotionContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBilling } from '@/hooks/useBilling';
 import MarketingNav from '@/components/marketing/MarketingNav';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
@@ -55,6 +57,9 @@ const faqItems = [
 
 const Pricing: React.FC = () => {
   const { intensity } = useMotion();
+  const { user } = useAuth();
+  const { startCheckout, isLoading: isCheckoutLoading } = useBilling();
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,7 +113,7 @@ const Pricing: React.FC = () => {
             </p>
 
             <Button asChild variant="outline" size="lg" className="w-full mb-8">
-              <Link to="/auth">
+              <Link to={user ? "/settings/api-keys" : "/auth"}>
                 Connect Your Keys
               </Link>
             </Button>
@@ -197,14 +202,23 @@ const Pricing: React.FC = () => {
               Everything included. No API keys needed. Get 100 ATS generations and 10 interview sessions monthly.
             </p>
 
-            <Button asChild size="lg" className="w-full mb-8 bg-gradient-aurora text-background hover:opacity-90 relative z-10 group">
-              <Link to="/auth">
-                <Sparkles className={cn(
-                  "w-4 h-4 mr-2 transition-transform",
-                  intensity === 'magical' && 'group-hover:rotate-12 group-hover:scale-110'
-                )} />
-                Start Pro
-              </Link>
+            <Button
+              size="lg"
+              disabled={isCheckoutLoading}
+              onClick={async () => {
+                if (!user) {
+                  navigate('/auth');
+                  return;
+                }
+                await startCheckout();
+              }}
+              className="w-full mb-8 bg-gradient-aurora text-background hover:opacity-90 relative z-10 group"
+            >
+              <Sparkles className={cn(
+                "w-4 h-4 mr-2 transition-transform",
+                intensity === 'magical' && 'group-hover:rotate-12 group-hover:scale-110'
+              )} />
+              Start Pro
             </Button>
 
             <ul className="space-y-3 relative z-10">

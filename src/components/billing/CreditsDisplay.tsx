@@ -91,7 +91,7 @@ const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ type, showUpgradePrompt
               </p>
               <div className="flex gap-2 mt-2">
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/api-keys">Connect Keys</Link>
+                  <Link to="/settings/api-keys">Connect Keys</Link>
                 </Button>
                 <Button asChild size="sm" className="bg-gradient-aurora text-background">
                   <Link to="/pricing">
