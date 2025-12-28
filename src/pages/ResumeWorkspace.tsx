@@ -4,6 +4,7 @@ import { useResumeVersions, useCreateResume, useUpdateResume } from '@/hooks/use
 import { useJobs } from '@/hooks/useJobs';
 import { useProfile } from '@/hooks/useProfile';
 import { useMotion } from '@/contexts/MotionContext';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import CreditsDisplay from '@/components/billing/CreditsDisplay';
+import EntitlementGate from '@/components/billing/EntitlementGate';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -43,6 +46,7 @@ const ResumeWorkspace: React.FC = () => {
   const createResume = useCreateResume();
   const updateResume = useUpdateResume();
   const { intensity } = useMotion();
+  const { canGenerateResume, incrementUsage, isPro } = useEntitlements();
 
   const [selectedJobId, setSelectedJobId] = useState<string>('none');
   const [jdText, setJdText] = useState('');
@@ -103,6 +107,11 @@ const ResumeWorkspace: React.FC = () => {
       return;
     }
 
+    if (!canGenerateResume) {
+      toast.error('You need API keys or Pro subscription to generate resumes');
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
@@ -125,6 +134,11 @@ const ResumeWorkspace: React.FC = () => {
         ats_score: null,
         ats_report: null,
       });
+
+      // Increment usage for Pro users
+      if (isPro) {
+        await incrementUsage('resume');
+      }
 
       setSelectedResumeId(result.id);
       setResumeName('');
@@ -275,7 +289,7 @@ const ResumeWorkspace: React.FC = () => {
           </div>
 
           <div>
-            <Label>Resume Name</Label>
+          <Label>Resume Name</Label>
             <Input
               value={resumeName}
               onChange={(e) => setResumeName(e.target.value)}
@@ -283,9 +297,14 @@ const ResumeWorkspace: React.FC = () => {
             />
           </div>
 
+          {/* Credits Display */}
+          <div className="pt-2 border-t border-border">
+            <CreditsDisplay type="resume" />
+          </div>
+
           <Button 
             onClick={handleGenerate} 
-            disabled={isGenerating}
+            disabled={isGenerating || !canGenerateResume}
             className="w-full gap-2 bg-gradient-aurora text-background"
           >
             <Wand2 className="w-4 h-4" />
