@@ -16,6 +16,7 @@ import JobDetail from "./pages/JobDetail";
 import ResumeWorkspace from "./pages/ResumeWorkspace";
 import InterviewPractice from "./pages/InterviewPractice";
 import LiveInterviewRoom from "./pages/LiveInterviewRoom";
+import LiveOverlay from "./pages/LiveOverlay";
 import SessionDebrief from "./pages/SessionDebrief";
 import StoryBank from "./pages/StoryBank";
 import ProfileHub from "./pages/ProfileHub";
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/resume" element={<ProtectedRoute><AppLayout><ResumeWorkspace /></AppLayout></ProtectedRoute>} />
                 <Route path="/interview" element={<ProtectedRoute><AppLayout><InterviewPractice /></AppLayout></ProtectedRoute>} />
                 <Route path="/interview/live" element={<ProtectedRoute><AppLayout><LiveInterviewRoom /></AppLayout></ProtectedRoute>} />
+                <Route path="/interview/live-overlay" element={<ProtectedRoute><LiveOverlay /></ProtectedRoute>} />
                 <Route path="/session/:sessionId/debrief" element={<ProtectedRoute><AppLayout><SessionDebrief /></AppLayout></ProtectedRoute>} />
                 <Route path="/session-debrief" element={<ProtectedRoute><AppLayout><SessionDebrief /></AppLayout></ProtectedRoute>} />
                 <Route path="/stories" element={<ProtectedRoute><AppLayout><StoryBank /></AppLayout></ProtectedRoute>} />

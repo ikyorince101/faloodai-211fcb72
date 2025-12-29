@@ -147,6 +147,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          live_overlay_minutes_used: number
           month_start: string
           resumes_used: number
           updated_at: string
@@ -155,6 +156,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          live_overlay_minutes_used?: number
           month_start: string
           resumes_used?: number
           updated_at?: string
@@ -163,6 +165,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          live_overlay_minutes_used?: number
           month_start?: string
           resumes_used?: number
           updated_at?: string
@@ -488,6 +491,7 @@ export type Database = {
         Row: {
           id: string
           interviews_used: number
+          live_overlay_minutes_used: number
           period_end: string
           period_start: string
           resumes_used: number
@@ -497,6 +501,7 @@ export type Database = {
         Insert: {
           id?: string
           interviews_used?: number
+          live_overlay_minutes_used?: number
           period_end: string
           period_start: string
           resumes_used?: number
@@ -506,6 +511,7 @@ export type Database = {
         Update: {
           id?: string
           interviews_used?: number
+          live_overlay_minutes_used?: number
           period_end?: string
           period_start?: string
           resumes_used?: number
@@ -575,6 +581,7 @@ export type Database = {
         | "case_study"
         | "mixed"
         | "custom"
+        | "live_overlay"
       round_outcome:
         | "pending"
         | "passed"
@@ -737,6 +744,7 @@ export const Constants = {
         "case_study",
         "mixed",
         "custom",
+        "live_overlay",
       ],
       round_outcome: [
         "pending",
