@@ -11,10 +11,12 @@ import {
   X,
   BarChart2,
   CreditCard,
-  MessageSquarePlus
+  MessageSquarePlus,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import faloodaiLogo from '@/assets/faloodai-logo.png';
 
 const navItems = [
@@ -36,6 +38,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
   const location = useLocation();
   const { intensity } = useMotion();
+  const { isAdmin } = useAdminRole();
 
   const sidebarContent = (
     <div className="h-full flex flex-col bg-sidebar">
@@ -120,6 +123,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
 
       {/* Settings & Billing Links */}
       <div className="p-3 border-t border-sidebar-border space-y-1">
+        {/* Admin Link - Only visible for admins */}
+        {isAdmin && (
+          <NavLink
+            to="/admin"
+            onClick={onMobileClose}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300",
+              "hover:bg-sidebar-accent/50",
+              location.pathname === '/admin' && "nav-link-active"
+            )}
+          >
+            <div className={cn(
+              "p-2 rounded-lg transition-all duration-300",
+              location.pathname === '/admin'
+                ? "bg-warning/20 text-warning"
+                : "text-warning hover:bg-warning/10"
+            )}>
+              <Shield className="w-5 h-5" />
+            </div>
+            <span className="text-sm font-medium text-sidebar-foreground">Admin</span>
+          </NavLink>
+        )}
         <NavLink
           to="/settings/billing"
           onClick={onMobileClose}

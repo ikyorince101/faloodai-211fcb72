@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquarePlus, Bug, Send, CheckCircle } from 'lucide-react';
+import { MessageSquarePlus, Bug, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,16 +9,18 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
+import { useFeedback } from '@/hooks/useFeedback';
 
 const Feedback: React.FC = () => {
   const { intensity } = useMotion();
+  const { createSubmission } = useFeedback();
   const [type, setType] = useState<'feature' | 'bug'>('feature');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title.trim() || !description.trim()) {
@@ -26,19 +28,20 @@ const Feedback: React.FC = () => {
       return;
     }
 
-    // Create mailto link
-    const subject = encodeURIComponent(`[${type === 'feature' ? 'Feature Request' : 'Bug Report'}] ${title}`);
-    const body = encodeURIComponent(
-      `Type: ${type === 'feature' ? 'Feature Request' : 'Bug Report'}\n\n` +
-      `Title: ${title}\n\n` +
-      `Description:\n${description}\n\n` +
-      (email ? `Contact Email: ${email}` : '')
-    );
-    
-    window.location.href = `mailto:faloodai@inuberry.com?subject=${subject}&body=${body}`;
-    
-    setSubmitted(true);
-    toast.success('Opening your email client...');
+    createSubmission.mutate({
+      feedback_type: type,
+      title: title.trim(),
+      description: description.trim(),
+      email: email.trim() || undefined,
+    }, {
+      onSuccess: () => {
+        setSubmitted(true);
+        setTitle('');
+        setDescription('');
+        setEmail('');
+        setType('feature');
+      }
+    });
   };
 
   if (submitted) {
@@ -56,8 +59,8 @@ const Feedback: React.FC = () => {
               Thank You!
             </h2>
             <p className="text-muted-foreground mb-8">
-              Your email client should have opened with the pre-filled message.
-              If it didn't, please send your feedback directly to{' '}
+              Your feedback has been submitted successfully. Our team will review it shortly.
+              You can also reach us directly at{' '}
               <a href="mailto:faloodai@inuberry.com" className="text-primary hover:underline">
                 faloodai@inuberry.com
               </a>
@@ -174,8 +177,16 @@ const Feedback: React.FC = () => {
             </div>
 
             {/* Submit */}
-            <Button type="submit" className="w-full bg-gradient-aurora text-background hover:opacity-90 gap-2">
-              <Send className="w-4 h-4" />
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-aurora text-background hover:opacity-90 gap-2"
+              disabled={createSubmission.isPending}
+            >
+              {createSubmission.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
               Submit Feedback
             </Button>
           </form>
