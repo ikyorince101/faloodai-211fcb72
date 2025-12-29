@@ -1,103 +1,77 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Target, 
-  FileText, 
-  Mic, 
-  BookOpen, 
-  BarChart3, 
-  ChevronRight,
-  Star,
-  Zap,
-  Shield,
-  AlertTriangle,
-  Mail,
-  MessageSquarePlus,
-  Sparkles
-} from 'lucide-react';
+import { Target, FileText, Mic, BookOpen, BarChart3, ChevronRight, Star, Zap, Shield, AlertTriangle, Mail, MessageSquarePlus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMotion } from '@/contexts/MotionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import MarketingNav from '@/components/marketing/MarketingNav';
 import faloodaiLogo from '@/assets/faloodai-logo.png';
 import appScreenshot from '@/assets/app-screenshot.png';
-
-const features = [
-  {
-    icon: FileText,
-    title: 'ATS-Optimized Resumes',
-    description: 'Generate tailored resumes that pass ATS filters with AI-powered keyword optimization.',
-  },
-  {
-    icon: Mic,
-    title: 'AI Mock Interviews',
-    description: 'Practice with realistic AI-driven interviews and receive instant rubric-based feedback.',
-  },
-  {
-    icon: Target,
-    title: 'Job Pipeline Tracker',
-    description: 'Organize your applications with a visual Kanban board from saved to offer.',
-  },
-  {
-    icon: BookOpen,
-    title: 'STAR Story Bank',
-    description: 'Store and refine your best interview stories for consistent, impactful answers.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Analytics Dashboard',
-    description: 'Track your progress with rubric trends, practice streaks, and pipeline metrics.',
-  },
-  {
-    icon: Shield,
-    title: 'Your Data, Your Keys',
-    description: 'Free tier lets you bring your own API keys. Pro tier includes everything.',
-  },
-];
-
-const testimonials = [
-  {
-    name: 'Sarah Chen',
-    role: 'Software Engineer at Google',
-    quote: 'FaloodAI helped me land my dream job. The mock interviews were incredibly realistic.',
-    avatar: 'SC',
-  },
-  {
-    name: 'Marcus Johnson',
-    role: 'Product Manager at Stripe',
-    quote: 'The ATS optimization feature doubled my interview callback rate in just two weeks.',
-    avatar: 'MJ',
-  },
-  {
-    name: 'Emily Rodriguez',
-    role: 'Data Scientist at Meta',
-    quote: 'The STAR story bank changed how I prepare. Now I never blank on behavioral questions.',
-    avatar: 'ER',
-  },
-];
-
+const features = [{
+  icon: FileText,
+  title: 'ATS-Optimized Resumes',
+  description: 'Generate tailored resumes that pass ATS filters with AI-powered keyword optimization.'
+}, {
+  icon: Mic,
+  title: 'AI Mock Interviews',
+  description: 'Practice with realistic AI-driven interviews and receive instant rubric-based feedback.'
+}, {
+  icon: Target,
+  title: 'Job Pipeline Tracker',
+  description: 'Organize your applications with a visual Kanban board from saved to offer.'
+}, {
+  icon: BookOpen,
+  title: 'STAR Story Bank',
+  description: 'Store and refine your best interview stories for consistent, impactful answers.'
+}, {
+  icon: BarChart3,
+  title: 'Analytics Dashboard',
+  description: 'Track your progress with rubric trends, practice streaks, and pipeline metrics.'
+}, {
+  icon: Shield,
+  title: 'Your Data, Your Keys',
+  description: 'Free tier lets you bring your own API keys. Pro tier includes everything.'
+}];
+const testimonials = [{
+  name: 'Sarah Chen',
+  role: 'Software Engineer at Google',
+  quote: 'FaloodAI helped me land my dream job. The mock interviews were incredibly realistic.',
+  avatar: 'SC'
+}, {
+  name: 'Marcus Johnson',
+  role: 'Product Manager at Stripe',
+  quote: 'The ATS optimization feature doubled my interview callback rate in just two weeks.',
+  avatar: 'MJ'
+}, {
+  name: 'Emily Rodriguez',
+  role: 'Data Scientist at Meta',
+  quote: 'The STAR story bank changed how I prepare. Now I never blank on behavioral questions.',
+  avatar: 'ER'
+}];
 const Landing: React.FC = () => {
-  const { intensity } = useMotion();
-  const { user, loading } = useAuth();
+  const {
+    intensity
+  } = useMotion();
+  const {
+    user,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
-
   useEffect(() => {
     if (!loading && user) {
-      navigate('/app', { replace: true });
+      navigate('/app', {
+        replace: true
+      });
     }
   }, [user, loading, navigate]);
 
   // Show loading while checking auth
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <MarketingNav />
       
       {/* Hero Section */}
@@ -105,7 +79,9 @@ const Landing: React.FC = () => {
         {/* Background Effects */}
         <div className="absolute inset-0 pointer-events-none">
           <div className={`absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px] ${intensity === 'magical' ? 'animate-float' : ''}`} />
-          <div className={`absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/15 rounded-full blur-[100px] ${intensity === 'magical' ? 'animate-float' : ''}`} style={{ animationDelay: '1s' }} />
+          <div className={`absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/15 rounded-full blur-[100px] ${intensity === 'magical' ? 'animate-float' : ''}`} style={{
+          animationDelay: '1s'
+        }} />
         </div>
 
         <div className="max-w-6xl mx-auto text-center relative z-10">
@@ -114,7 +90,9 @@ const Landing: React.FC = () => {
             <span className="text-sm text-primary font-medium">AI-Powered Career Coach</span>
           </div>
           
-          <h1 className={`text-5xl md:text-7xl font-display font-bold text-foreground mb-6 leading-tight ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{ animationDelay: '0.1s' }}>
+          <h1 className={`text-5xl md:text-7xl font-display font-bold text-foreground mb-6 leading-tight ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{
+          animationDelay: '0.1s'
+        }}>
             Land Your Dream Job
             <br />
             <span className="bg-gradient-aurora bg-clip-text text-transparent">
@@ -122,19 +100,20 @@ const Landing: React.FC = () => {
             </span>
           </h1>
           
-          <p className={`text-xl text-muted-foreground max-w-2xl mx-auto mb-10 ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{ animationDelay: '0.2s' }}>
+          <p className={`text-xl text-muted-foreground max-w-2xl mx-auto mb-10 ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{
+          animationDelay: '0.2s'
+        }}>
             Generate ATS-beating resumes, practice with realistic AI interviews, and track your pipeline—all in one magical workspace.
           </p>
           
-          <div className={`flex flex-col sm:flex-row gap-4 justify-center ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{ animationDelay: '0.3s' }}>
-            {user ? (
-              <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
+          <div className={`flex flex-col sm:flex-row gap-4 justify-center ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{
+          animationDelay: '0.3s'
+        }}>
+            {user ? <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
                 <Link to="/app">
                   Go to Dashboard <ChevronRight className="w-5 h-5" />
                 </Link>
-              </Button>
-            ) : (
-              <>
+              </Button> : <>
                 <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
                   <Link to="/auth">
                     Get Started Free <ChevronRight className="w-5 h-5" />
@@ -145,35 +124,19 @@ const Landing: React.FC = () => {
                     View Pricing
                   </Link>
                 </Button>
-              </>
-            )}
+              </>}
           </div>
 
           {/* Stats */}
-          <div className={`grid grid-cols-3 gap-8 max-w-2xl mx-auto mt-16 ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{ animationDelay: '0.4s' }}>
-            <div>
-              <p className="text-3xl font-bold text-foreground">10K+</p>
-              <p className="text-sm text-muted-foreground">Job Seekers</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-foreground">85%</p>
-              <p className="text-sm text-muted-foreground">Interview Rate</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-foreground">50K+</p>
-              <p className="text-sm text-muted-foreground">Resumes Created</p>
-            </div>
-          </div>
+          
         </div>
 
         {/* Screenshot Placeholder */}
-        <div className={`max-w-5xl mx-auto mt-20 ${intensity !== 'off' ? 'animate-fade-in-scale' : ''}`} style={{ animationDelay: '0.5s' }}>
+        <div className={`max-w-5xl mx-auto mt-20 ${intensity !== 'off' ? 'animate-fade-in-scale' : ''}`} style={{
+        animationDelay: '0.5s'
+      }}>
           <div className="glass-card p-2 rounded-2xl glow-primary">
-            <img 
-              src={appScreenshot} 
-              alt="FaloodAI Dashboard - Your career command center" 
-              className="w-full rounded-xl border border-border/50"
-            />
+            <img src={appScreenshot} alt="FaloodAI Dashboard - Your career command center" className="w-full rounded-xl border border-border/50" />
           </div>
         </div>
       </section>
@@ -191,19 +154,15 @@ const Landing: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={feature.title}
-                className={`glass-card p-6 hover-halo transition-all ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+            {features.map((feature, index) => <div key={feature.title} className={`glass-card p-6 hover-halo transition-all ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{
+            animationDelay: `${index * 0.1}s`
+          }}>
                 <div className={`w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4 ${intensity === 'magical' ? 'glow-primary' : ''}`}>
                   <feature.icon className="w-6 h-6 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground">{feature.description}</p>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -221,23 +180,27 @@ const Landing: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { step: '01', title: 'Build Your Profile', description: 'Add your skills, experience, and career goals. Store your best STAR stories.' },
-              { step: '02', title: 'Generate & Practice', description: 'Create tailored resumes and practice with AI mock interviews.' },
-              { step: '03', title: 'Track & Improve', description: 'Monitor your pipeline, review feedback, and iterate to success.' },
-            ].map((item, index) => (
-              <div
-                key={item.step}
-                className={`text-center ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`}
-                style={{ animationDelay: `${index * 0.15}s` }}
-              >
+            {[{
+            step: '01',
+            title: 'Build Your Profile',
+            description: 'Add your skills, experience, and career goals. Store your best STAR stories.'
+          }, {
+            step: '02',
+            title: 'Generate & Practice',
+            description: 'Create tailored resumes and practice with AI mock interviews.'
+          }, {
+            step: '03',
+            title: 'Track & Improve',
+            description: 'Monitor your pipeline, review feedback, and iterate to success.'
+          }].map((item, index) => <div key={item.step} className={`text-center ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{
+            animationDelay: `${index * 0.15}s`
+          }}>
                 <div className={`w-20 h-20 rounded-full bg-gradient-aurora flex items-center justify-center mx-auto mb-6 ${intensity === 'magical' ? 'glow-accent' : ''}`}>
                   <span className="text-2xl font-bold text-background">{item.step}</span>
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">{item.title}</h3>
                 <p className="text-muted-foreground">{item.description}</p>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -255,16 +218,11 @@ const Landing: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={testimonial.name}
-                className={`glass-card p-6 ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+            {testimonials.map((testimonial, index) => <div key={testimonial.name} className={`glass-card p-6 ${intensity !== 'off' ? 'animate-fade-in-up' : ''}`} style={{
+            animationDelay: `${index * 0.1}s`
+          }}>
                 <div className="flex items-center gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-warning fill-warning" />
-                  ))}
+                  {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 text-warning fill-warning" />)}
                 </div>
                 <p className="text-foreground mb-6">"{testimonial.quote}"</p>
                 <div className="flex items-center gap-3">
@@ -276,8 +234,7 @@ const Landing: React.FC = () => {
                     <p className="text-sm text-muted-foreground">{testimonial.role}</p>
                   </div>
                 </div>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -296,14 +253,11 @@ const Landing: React.FC = () => {
             Join thousands of job seekers who've transformed their career search with FaloodAI.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {user ? (
-              <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
+            {user ? <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
                 <Link to="/app">
                   Go to Dashboard <Sparkles className="w-5 h-5" />
                 </Link>
-              </Button>
-            ) : (
-              <>
+              </Button> : <>
                 <Button asChild size="lg" className="bg-gradient-aurora text-background hover:opacity-90 gap-2 text-lg px-8 glow-primary">
                   <Link to="/auth">
                     Start Free Today <Sparkles className="w-5 h-5" />
@@ -314,8 +268,7 @@ const Landing: React.FC = () => {
                     Compare Plans
                   </Link>
                 </Button>
-              </>
-            )}
+              </>}
           </div>
         </div>
       </section>
@@ -346,15 +299,11 @@ const Landing: React.FC = () => {
               <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
               </Link>
-              {user ? (
-                <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              {user ? <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   Dashboard
-                </Link>
-              ) : (
-                <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                </Link> : <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   Sign In
-                </Link>
-              )}
+                </Link>}
               <Link to="/feedback" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <MessageSquarePlus className="w-4 h-4" />
                 Request Feature / Report Bug
@@ -372,8 +321,6 @@ const Landing: React.FC = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
