@@ -7,14 +7,15 @@ import {
   Mic, 
   BookOpen, 
   User,
-  Sparkles,
   Settings,
   X,
   BarChart2,
-  CreditCard
+  CreditCard,
+  MessageSquarePlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
+import faloodaiLogo from '@/assets/faloodai-logo.png';
 
 const navItems = [
   { path: '/app', icon: LayoutDashboard, label: 'Dashboard', description: 'Your command center' },
@@ -24,6 +25,7 @@ const navItems = [
   { path: '/stories', icon: BookOpen, label: 'Story Bank', description: 'STAR stories' },
   { path: '/profile', icon: User, label: 'Profile Hub', description: 'Your work history' },
   { path: '/analytics', icon: BarChart2, label: 'Analytics', description: 'Progress & trends' },
+  { path: '/feedback', icon: MessageSquarePlus, label: 'Feedback', description: 'Request features / Report bugs' },
 ];
 
 interface SidebarProps {
@@ -41,11 +43,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
       <div className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-primary">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img 
+              src={faloodaiLogo} 
+              alt="FaloodAI Logo" 
+              className="w-10 h-10 object-contain"
+            />
             {intensity === 'magical' && (
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary to-accent opacity-50 blur-lg animate-pulse" />
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary to-accent opacity-30 blur-lg animate-pulse" />
             )}
           </div>
           <div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Menu, X, Settings2 } from 'lucide-react';
+import { Menu, X, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMotion, MotionIntensity } from '@/contexts/MotionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import faloodaiLogo from '@/assets/faloodai-logo.png';
 
 const motionOptions: { value: MotionIntensity; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -30,9 +31,7 @@ const MarketingNav: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-gradient-aurora flex items-center justify-center glow-primary">
-            <Sparkles className="w-5 h-5 text-background" />
-          </div>
+          <img src={faloodaiLogo} alt="FaloodAI Logo" className="w-9 h-9 object-contain" />
           <span className="font-display font-bold text-xl text-foreground">FaloodAI</span>
         </Link>
 

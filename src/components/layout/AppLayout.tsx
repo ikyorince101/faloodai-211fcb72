@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import BetaFooter from './BetaFooter';
 import { useMotion } from '@/contexts/MotionContext';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </div>
           </div>
         </main>
+        
+        <BetaFooter />
       </div>
     </div>
   );
