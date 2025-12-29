@@ -28,6 +28,7 @@ import SuccessPage from "./pages/Success";
 import CancelPage from "./pages/Cancel";
 import ApiKeysPage from "./pages/ApiKeys";
 import OnboardingPage from "./pages/Onboarding";
+import Feedback from "./pages/Feedback";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="/settings/api-keys" element={<ProtectedRoute><AppLayout><ApiKeysPage /></AppLayout></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><AppLayout><BillingPage /></AppLayout></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
+                <Route path="/feedback" element={<ProtectedRoute><AppLayout><Feedback /></AppLayout></ProtectedRoute>} />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>

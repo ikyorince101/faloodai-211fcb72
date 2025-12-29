@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  Sparkles, 
   Target, 
   FileText, 
   Mic, 
@@ -10,12 +9,17 @@ import {
   ChevronRight,
   Star,
   Zap,
-  Shield
+  Shield,
+  AlertTriangle,
+  Mail,
+  MessageSquarePlus,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMotion } from '@/contexts/MotionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import MarketingNav from '@/components/marketing/MarketingNav';
+import faloodaiLogo from '@/assets/faloodai-logo.png';
 
 const features = [
   {
@@ -316,31 +320,55 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer with Beta Warning */}
       <footer className="py-12 px-4 border-t border-border">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-aurora flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-background" />
-            </div>
-            <span className="font-display font-bold text-foreground">FaloodAI</span>
+        <div className="max-w-6xl mx-auto">
+          {/* Beta Warning Banner */}
+          <div className="flex items-center justify-center gap-2 mb-8 p-4 rounded-lg bg-warning/10 border border-warning/30">
+            <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
+            <p className="text-sm text-warning font-medium text-center">
+              This product is currently in <span className="font-bold">BETA PHASE</span>. Features may change and some functionality may be limited.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} FaloodAI. All rights reserved.
-          </p>
-          <div className="flex gap-6">
-            <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Pricing
-            </Link>
-            {user ? (
-              <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Dashboard
+
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <img src={faloodaiLogo} alt="FaloodAI Logo" className="w-10 h-10 object-contain" />
+              <div>
+                <span className="font-display font-bold text-foreground">FaloodAI</span>
+                <p className="text-xs text-muted-foreground">A product of Inuberry / SFI Ventures</p>
+              </div>
+            </div>
+
+            {/* Links */}
+            <div className="flex flex-wrap justify-center gap-6">
+              <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Pricing
               </Link>
-            ) : (
-              <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Sign In
+              {user ? (
+                <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Dashboard
+                </Link>
+              ) : (
+                <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Sign In
+                </Link>
+              )}
+              <Link to="/feedback" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <MessageSquarePlus className="w-4 h-4" />
+                Request Feature / Report Bug
               </Link>
-            )}
+              <a href="mailto:faloodai@inuberry.com" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Mail className="w-4 h-4" />
+                faloodai@inuberry.com
+              </a>
+            </div>
+
+            {/* Copyright */}
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} Inuberry / SFI Ventures
+            </p>
           </div>
         </div>
       </footer>
