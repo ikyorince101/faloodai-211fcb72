@@ -99,7 +99,7 @@ serve(async (req) => {
 
     console.log('Audio fetched, transcribing with AI...');
 
-    // Use Gemini for transcription (it can process audio)
+    // Use Gemini for transcription with speaker diarization
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -114,7 +114,23 @@ serve(async (req) => {
             content: [
               {
                 type: 'text',
-                text: 'Please transcribe this audio recording accurately. Return ONLY the transcript text, nothing else. If the audio is unclear or silent, return "[inaudible]".'
+                text: `Transcribe this audio recording with speaker diarization. Identify different speakers and label them.
+
+Return a JSON object with this exact structure:
+{
+  "transcript": "the full transcript text",
+  "segments": [
+    {"speaker": "Speaker 1", "text": "what they said", "isQuestion": false},
+    {"speaker": "Speaker 2", "text": "what they said", "isQuestion": true}
+  ]
+}
+
+Rules:
+- Label speakers as "Speaker 1", "Speaker 2", etc.
+- Set "isQuestion" to true if the segment contains a question or interview-style prompt (e.g., "Tell me about...", "Describe a time when...", "What would you do if...")
+- If only one speaker, still include them in segments
+- If audio is unclear or silent, return {"transcript": "[inaudible]", "segments": []}
+- Return ONLY valid JSON, no other text`
               },
               {
                 type: 'image_url',
@@ -142,6 +158,7 @@ serve(async (req) => {
       // Fallback: return placeholder transcript
       return new Response(JSON.stringify({ 
         transcript: '[Audio transcription unavailable - please try again]',
+        segments: [],
         success: false
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -149,12 +166,33 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const transcript = data.choices?.[0]?.message?.content?.trim() || '[No speech detected]';
+    const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
+    
+    // Parse the JSON response
+    let transcript = '[No speech detected]';
+    let segments: Array<{speaker: string; text: string; isQuestion: boolean}> = [];
+    
+    try {
+      // Handle potential markdown code blocks
+      let jsonContent = rawContent;
+      if (rawContent.startsWith('```')) {
+        jsonContent = rawContent.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+      }
+      
+      const parsed = JSON.parse(jsonContent);
+      transcript = parsed.transcript || '[No speech detected]';
+      segments = parsed.segments || [];
+    } catch (parseError) {
+      console.error('Failed to parse diarization JSON:', parseError);
+      // Fallback: use raw content as transcript
+      transcript = rawContent || '[No speech detected]';
+    }
 
-    console.log('Transcription complete:', transcript.substring(0, 100) + '...');
+    console.log('Transcription complete:', transcript.substring(0, 100) + '...', 'Segments:', segments.length);
 
     return new Response(JSON.stringify({ 
       transcript,
+      segments,
       success: true
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

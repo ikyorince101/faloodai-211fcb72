@@ -84,6 +84,37 @@ export const useLiveOverlayCapture = (sessionId: string | null, speakFeedback: b
     update();
   }, []);
 
+  // Speaker tracking - maps detected speakers to roles
+  const speakerMapRef = useRef<Map<string, 'user' | 'interviewer'>>(new Map());
+
+  // Determine speaker role based on diarization data
+  const determineSpeakerRole = useCallback((
+    speaker: string, 
+    isQuestion: boolean
+  ): 'user' | 'interviewer' => {
+    // Check if we've already mapped this speaker
+    if (speakerMapRef.current.has(speaker)) {
+      return speakerMapRef.current.get(speaker)!;
+    }
+
+    // First segment with a question is likely the interviewer
+    if (isQuestion) {
+      speakerMapRef.current.set(speaker, 'interviewer');
+      return 'interviewer';
+    }
+
+    // If we already have an interviewer, this must be the user
+    const hasInterviewer = Array.from(speakerMapRef.current.values()).includes('interviewer');
+    if (hasInterviewer) {
+      speakerMapRef.current.set(speaker, 'user');
+      return 'user';
+    }
+
+    // Default: first non-question speaker is the user
+    speakerMapRef.current.set(speaker, 'user');
+    return 'user';
+  }, []);
+
   // Process audio chunk - transcribe and get coaching
   const processAudioChunk = useCallback(async (audioBlob: Blob) => {
     if (!user || !sessionId || audioBlob.size < 1000) return;
@@ -102,7 +133,7 @@ export const useLiveOverlayCapture = (sessionId: string | null, speakFeedback: b
         return;
       }
 
-      // Transcribe
+      // Transcribe with diarization
       const { data: transcriptData, error: transcriptError } = await supabase.functions.invoke('transcribe-audio', {
         body: { audioPath: filePath }
       });
@@ -113,47 +144,78 @@ export const useLiveOverlayCapture = (sessionId: string | null, speakFeedback: b
       }
 
       const transcriptText = transcriptData.transcript;
+      const segments = transcriptData.segments || [];
       
       // Skip if transcription is essentially empty
       if (transcriptText.length < 10 || transcriptText === '[inaudible]' || transcriptText === '[No speech detected]') {
         return;
       }
 
-      // Determine speaker (simplified heuristic - could be improved with more sophisticated analysis)
-      const isQuestion = transcriptText.includes('?') || 
-                         transcriptText.toLowerCase().includes('tell me') ||
-                         transcriptText.toLowerCase().includes('describe') ||
-                         transcriptText.toLowerCase().includes('explain');
-      const speaker: 'user' | 'interviewer' = isQuestion ? 'interviewer' : 'user';
+      // Process each segment with proper speaker identification
+      const newEntries: TranscriptEntry[] = [];
+      let userResponseText = '';
 
-      // Add to transcripts
-      const newEntry: TranscriptEntry = {
-        id: generateId(),
-        speaker,
-        text: transcriptText,
-        timestamp: new Date(),
-      };
-      setTranscripts(prev => [...prev, newEntry]);
+      if (segments.length > 0) {
+        // Use diarization data
+        for (const segment of segments) {
+          const role = determineSpeakerRole(segment.speaker, segment.isQuestion);
+          
+          newEntries.push({
+            id: generateId(),
+            speaker: role,
+            text: segment.text,
+            timestamp: new Date(),
+          });
+
+          if (role === 'user') {
+            userResponseText += ' ' + segment.text;
+          }
+        }
+      } else {
+        // Fallback: use heuristics if no segments
+        const isQuestion = transcriptText.includes('?') || 
+                           transcriptText.toLowerCase().includes('tell me') ||
+                           transcriptText.toLowerCase().includes('describe') ||
+                           transcriptText.toLowerCase().includes('explain');
+        const speaker: 'user' | 'interviewer' = isQuestion ? 'interviewer' : 'user';
+
+        newEntries.push({
+          id: generateId(),
+          speaker,
+          text: transcriptText,
+          timestamp: new Date(),
+        });
+
+        if (speaker === 'user') {
+          userResponseText = transcriptText;
+        }
+      }
+
+      // Add all new entries to transcripts
+      setTranscripts(prev => [...prev, ...newEntries]);
 
       // Store in recent transcripts for context
       recentTranscriptsRef.current = [...recentTranscriptsRef.current.slice(-10), transcriptText];
 
-      // Save practice event
+      // Save practice event with diarization info
       await supabase.from('practice_events').insert({
         session_id: sessionId,
         event_type: 'user_response',
         transcript_text: transcriptText,
         audio_url: filePath,
-        feedback: { speaker },
+        feedback: { 
+          segments: segments.map((s: { speaker: string; isQuestion: boolean }) => ({
+            speaker: s.speaker,
+            role: determineSpeakerRole(s.speaker, s.isQuestion),
+          }))
+        },
       });
 
-      // If this looks like a user response, get coaching
-      if (speaker === 'user' && transcriptText.length > 50) {
-        const recentContext = recentTranscriptsRef.current.join('\n');
-        
+      // If we have user responses, get coaching
+      if (userResponseText.trim().length > 50) {
         const { data: coachingData, error: coachingError } = await supabase.functions.invoke('coach-answer', {
           body: {
-            transcript: transcriptText,
+            transcript: userResponseText.trim(),
             question: 'Live Practice - Interview Question',
             followUps: [],
             competencies: ['structure', 'specificity', 'impact'],
@@ -223,7 +285,7 @@ export const useLiveOverlayCapture = (sessionId: string | null, speakFeedback: b
     } catch (err) {
       console.error('Error processing audio chunk:', err);
     }
-  }, [user, sessionId, speakFeedback]);
+  }, [user, sessionId, speakFeedback, determineSpeakerRole]);
 
   // Start chunking audio
   const startChunking = useCallback(() => {
