@@ -12,7 +12,8 @@ import {
   BarChart2,
   CreditCard,
   MessageSquarePlus,
-  Shield
+  Shield,
+  Video
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMotion } from '@/contexts/MotionContext';
@@ -24,6 +25,7 @@ const navItems = [
   { path: '/jobs', icon: Briefcase, label: 'Job Tracker', description: 'Pipeline & interviews' },
   { path: '/resume', icon: FileText, label: 'Resume Workspace', description: 'ATS-optimized versions' },
   { path: '/interview', icon: Mic, label: 'Interview Practice', description: 'Mock voice sessions' },
+  { path: '/interview/live-overlay', icon: Video, label: 'Live Overlay', description: 'Practice with live calls' },
   { path: '/stories', icon: BookOpen, label: 'Story Bank', description: 'STAR stories' },
   { path: '/profile', icon: User, label: 'Profile Hub', description: 'Your work history' },
   { path: '/analytics', icon: BarChart2, label: 'Analytics', description: 'Progress & trends' },
