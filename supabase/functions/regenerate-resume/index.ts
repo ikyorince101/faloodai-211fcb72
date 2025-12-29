@@ -40,9 +40,9 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     console.log('Starting resume regeneration based on ATS feedback...');
@@ -104,14 +104,14 @@ Return the improved resume as a JSON object with the exact same structure:
 
 IMPORTANT: Return ONLY valid JSON, no markdown or explanations.`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'user', content: prompt }
         ],
@@ -120,7 +120,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown or explanations.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+      console.error('OpenAI API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
@@ -128,14 +128,14 @@ IMPORTANT: Return ONLY valid JSON, no markdown or explanations.`;
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add credits.' }), {
+      if (response.status === 402 || response.status === 401) {
+        return new Response(JSON.stringify({ error: 'OpenAI API key issue. Please check your API key.' }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
