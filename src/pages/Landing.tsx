@@ -20,6 +20,7 @@ import { useMotion } from '@/contexts/MotionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import MarketingNav from '@/components/marketing/MarketingNav';
 import faloodaiLogo from '@/assets/faloodai-logo.png';
+import appScreenshot from '@/assets/app-screenshot.png';
 
 const features = [
   {
@@ -168,12 +169,11 @@ const Landing: React.FC = () => {
         {/* Screenshot Placeholder */}
         <div className={`max-w-5xl mx-auto mt-20 ${intensity !== 'off' ? 'animate-fade-in-scale' : ''}`} style={{ animationDelay: '0.5s' }}>
           <div className="glass-card p-2 rounded-2xl glow-primary">
-            <div className="aspect-video bg-gradient-cosmic rounded-xl flex items-center justify-center border border-border/50">
-              <div className="text-center">
-                <Zap className="w-16 h-16 text-primary/50 mx-auto mb-4" />
-                <p className="text-muted-foreground">App Screenshot Placeholder</p>
-              </div>
-            </div>
+            <img 
+              src={appScreenshot} 
+              alt="FaloodAI Dashboard - Your career command center" 
+              className="w-full rounded-xl border border-border/50"
+            />
           </div>
         </div>
       </section>
