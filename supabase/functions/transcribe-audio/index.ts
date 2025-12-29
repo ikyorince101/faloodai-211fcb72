@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // Input validation constants
 const MAX_PATH_LENGTH = 500;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB (Whisper API limit)
 
 // Validate audio path format: should be {uuid}/{filename}
 function validateAudioPath(path: unknown): string | null {
@@ -46,12 +46,12 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     console.log('Transcribing audio from:', audioPath);
@@ -79,7 +79,7 @@ serve(async (req) => {
     // Check content length if available
     const contentLength = audioResponse.headers.get('content-length');
     if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
-      return new Response(JSON.stringify({ error: 'Audio file too large (max 10MB)' }), {
+      return new Response(JSON.stringify({ error: 'Audio file too large (max 25MB)' }), {
         status: 413,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -89,66 +89,34 @@ serve(async (req) => {
     
     // Additional size check after download
     if (audioBlob.size > MAX_FILE_SIZE) {
-      return new Response(JSON.stringify({ error: 'Audio file too large (max 10MB)' }), {
+      return new Response(JSON.stringify({ error: 'Audio file too large (max 25MB)' }), {
         status: 413,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const base64Audio = await blobToBase64(audioBlob);
+    console.log('Audio fetched, transcribing with Whisper API...');
 
-    console.log('Audio fetched, transcribing with AI...');
+    // Use OpenAI Whisper API for transcription
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'verbose_json');
+    formData.append('timestamp_granularities[]', 'segment');
 
-    // Use Gemini for transcription with speaker diarization
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Transcribe this audio recording with speaker diarization. Identify different speakers and label them.
-
-Return a JSON object with this exact structure:
-{
-  "transcript": "the full transcript text",
-  "segments": [
-    {"speaker": "Speaker 1", "text": "what they said", "isQuestion": false},
-    {"speaker": "Speaker 2", "text": "what they said", "isQuestion": true}
-  ]
-}
-
-Rules:
-- Label speakers as "Speaker 1", "Speaker 2", etc.
-- Set "isQuestion" to true if the segment contains a question or interview-style prompt (e.g., "Tell me about...", "Describe a time when...", "What would you do if...")
-- If only one speaker, still include them in segments
-- If audio is unclear or silent, return {"transcript": "[inaudible]", "segments": []}
-- Return ONLY valid JSON, no other text`
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:audio/webm;base64,${base64Audio}`
-                }
-              }
-            ]
-          }
-        ],
-      }),
+      body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+    if (!whisperResponse.ok) {
+      const errorText = await whisperResponse.text();
+      console.error('Whisper API error:', whisperResponse.status, errorText);
       
-      if (response.status === 429) {
+      if (whisperResponse.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -165,27 +133,46 @@ Rules:
       });
     }
 
-    const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
+    const whisperData = await whisperResponse.json();
+    const transcript = whisperData.text || '[No speech detected]';
     
-    // Parse the JSON response
-    let transcript = '[No speech detected]';
-    let segments: Array<{speaker: string; text: string; isQuestion: boolean}> = [];
+    // Convert Whisper segments to our format with speaker diarization attempt
+    // Note: Whisper doesn't do speaker diarization, so we'll use a simple heuristic
+    // based on pauses and question detection
+    const segments: Array<{speaker: string; text: string; isQuestion: boolean}> = [];
     
-    try {
-      // Handle potential markdown code blocks
-      let jsonContent = rawContent;
-      if (rawContent.startsWith('```')) {
-        jsonContent = rawContent.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
-      }
+    if (whisperData.segments && whisperData.segments.length > 0) {
+      let currentSpeaker = 'Speaker 1';
+      let lastEndTime = 0;
       
-      const parsed = JSON.parse(jsonContent);
-      transcript = parsed.transcript || '[No speech detected]';
-      segments = parsed.segments || [];
-    } catch (parseError) {
-      console.error('Failed to parse diarization JSON:', parseError);
-      // Fallback: use raw content as transcript
-      transcript = rawContent || '[No speech detected]';
+      for (const seg of whisperData.segments) {
+        const text = seg.text?.trim() || '';
+        if (!text) continue;
+        
+        // Simple heuristic: if there's a significant pause (>2s), switch speakers
+        if (seg.start - lastEndTime > 2) {
+          currentSpeaker = currentSpeaker === 'Speaker 1' ? 'Speaker 2' : 'Speaker 1';
+        }
+        
+        // Detect if this segment is a question
+        const isQuestion = /\?$/.test(text) || 
+          /^(tell me|describe|explain|what|how|why|when|where|who|can you|could you|would you)/i.test(text);
+        
+        segments.push({
+          speaker: currentSpeaker,
+          text,
+          isQuestion
+        });
+        
+        lastEndTime = seg.end || seg.start;
+      }
+    } else {
+      // If no segments, just return the full transcript as one segment
+      segments.push({
+        speaker: 'Speaker 1',
+        text: transcript,
+        isQuestion: false
+      });
     }
 
     console.log('Transcription complete:', transcript.substring(0, 100) + '...', 'Segments:', segments.length);
@@ -207,17 +194,3 @@ Rules:
     });
   }
 });
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  const arrayBuffer = await blob.arrayBuffer();
-  const uint8Array = new Uint8Array(arrayBuffer);
-  let binary = '';
-  const chunkSize = 0x8000;
-  
-  for (let i = 0; i < uint8Array.length; i += chunkSize) {
-    const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
-  }
-  
-  return btoa(binary);
-}
