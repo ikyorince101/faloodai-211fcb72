@@ -12,7 +12,7 @@ const MotionContext = createContext<MotionContextType | undefined>(undefined);
 
 export const MotionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [intensity, setIntensity] = useState<MotionIntensity>('magical');
+  const [intensity, setIntensity] = useState<MotionIntensity>('off');
 
   useEffect(() => {
     // Check system preference for reduced motion
@@ -40,17 +40,27 @@ export const MotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
+  /* Apply global motion classes */
+  useEffect(() => {
+    const effective = prefersReducedMotion ? 'off' : intensity;
+    const root = document.documentElement;
+    root.classList.remove('motion-off', 'motion-subtle', 'motion-magical');
+    root.classList.add(`motion-${effective}`);
+  }, [intensity, prefersReducedMotion]);
+
   const handleSetIntensity = (newIntensity: MotionIntensity) => {
     setIntensity(newIntensity);
     localStorage.setItem('falood-motion-intensity', newIntensity);
   };
 
+  const effectiveIntensity = prefersReducedMotion ? 'off' : intensity;
+
   return (
-    <MotionContext.Provider 
-      value={{ 
-        intensity: prefersReducedMotion ? 'off' : intensity, 
+    <MotionContext.Provider
+      value={{
+        intensity: effectiveIntensity,
         setIntensity: handleSetIntensity,
-        prefersReducedMotion 
+        prefersReducedMotion
       }}
     >
       {children}
@@ -69,7 +79,7 @@ export const useMotion = () => {
 // Utility hook for getting animation classes based on motion preference
 export const useAnimationClass = (baseClass: string) => {
   const { intensity } = useMotion();
-  
+
   if (intensity === 'off') return '';
   if (intensity === 'subtle') return baseClass.replace('0.4s', '0.2s').replace('0.3s', '0.15s');
   return baseClass;
