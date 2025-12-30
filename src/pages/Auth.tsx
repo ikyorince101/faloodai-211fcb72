@@ -14,7 +14,7 @@ const AuthPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  
+
   const { signIn, signUp, user } = useAuth();
   const { intensity } = useMotion();
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ const AuthPage: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/app`,
+          redirectTo: `${import.meta.env.VITE_SITE_URL ?? window.location.origin}/app`,
         },
       });
       if (error) {
