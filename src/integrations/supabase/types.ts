@@ -445,6 +445,100 @@ export type Database = {
           },
         ]
       }
+      resume_editor_docs: {
+        Row: {
+          created_at: string
+          doc_json: Json
+          id: string
+          resume_id: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          doc_json?: Json
+          id?: string
+          resume_id: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          doc_json?: Json
+          id?: string
+          resume_id?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resume_editor_docs_resume_id_fkey"
+            columns: ["resume_id"]
+            isOneToOne: true
+            referencedRelation: "resume_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resume_suggestions: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          reason: string | null
+          replacement_text: string | null
+          resume_id: string
+          section_hint: string | null
+          status: string
+          suggestion_id: string
+          target_quote: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          reason?: string | null
+          replacement_text?: string | null
+          resume_id: string
+          section_hint?: string | null
+          status?: string
+          suggestion_id: string
+          target_quote: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          reason?: string | null
+          replacement_text?: string | null
+          resume_id?: string
+          section_hint?: string | null
+          status?: string
+          suggestion_id?: string
+          target_quote?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resume_suggestions_resume_id_fkey"
+            columns: ["resume_id"]
+            isOneToOne: false
+            referencedRelation: "resume_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories: {
         Row: {
           action: string | null

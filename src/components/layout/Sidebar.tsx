@@ -24,6 +24,7 @@ const navItems = [
   { path: '/app', icon: LayoutDashboard, label: 'Dashboard', description: 'Your command center' },
   { path: '/jobs', icon: Briefcase, label: 'Job Tracker', description: 'Pipeline & interviews' },
   { path: '/resume', icon: FileText, label: 'Resume Workspace', description: 'ATS-optimized versions' },
+  { path: '/resume-editor', icon: FileText, label: 'Interactive Resume Editor', description: 'Inline AI edits' },
   { path: '/interview', icon: Mic, label: 'Interview Practice', description: 'Mock voice sessions' },
   { path: '/interview/live-overlay', icon: Video, label: 'Live Overlay', description: 'Practice with live calls' },
   { path: '/stories', icon: BookOpen, label: 'Story Bank', description: 'STAR stories' },

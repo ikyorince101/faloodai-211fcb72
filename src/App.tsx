@@ -32,6 +32,7 @@ import ApiKeysPage from "./pages/ApiKeys";
 import OnboardingPage from "./pages/Onboarding";
 import Feedback from "./pages/Feedback";
 import AdminDashboard from "./pages/AdminDashboard";
+import ResumeEditor from "./pages/ResumeEditor";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="/jobs" element={<ProtectedRoute><AppLayout><JobTracker /></AppLayout></ProtectedRoute>} />
                 <Route path="/jobs/:jobId" element={<ProtectedRoute><AppLayout><JobDetail /></AppLayout></ProtectedRoute>} />
                 <Route path="/resume" element={<ProtectedRoute><AppLayout><ResumeWorkspace /></AppLayout></ProtectedRoute>} />
+                <Route path="/resume-editor" element={<ProtectedRoute><AppLayout><ResumeEditor /></AppLayout></ProtectedRoute>} />
                 <Route path="/interview" element={<ProtectedRoute><AppLayout><InterviewPractice /></AppLayout></ProtectedRoute>} />
                 <Route path="/interview/live" element={<ProtectedRoute><AppLayout><LiveInterviewRoom /></AppLayout></ProtectedRoute>} />
                 <Route path="/interview/live-overlay" element={<ProtectedRoute><LiveOverlay /></ProtectedRoute>} />
