@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useListResumesForEditor, useResumeEditorDoc, useSaveEditorDoc } from '@/hooks/useResumeEditor';
 import InteractiveEditor from '@/components/resume/InteractiveEditor';
 import SuggestionsPanel from '@/components/resume/SuggestionsPanel';
@@ -85,6 +86,7 @@ const ResumeEditor: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadResumeName, setUploadResumeName] = useState('');
+  const [inputsOpen, setInputsOpen] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<number | undefined>(undefined);
@@ -256,34 +258,7 @@ const ResumeEditor: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Select value={selectedResumeId || ''} onValueChange={setSelectedResumeId}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select resume" />
-            </SelectTrigger>
-            <SelectContent>
-              {resumes.map((resume) => (
-                <SelectItem key={resume.id} value={resume.id}>{resume.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedJobId || ''} onValueChange={(val) => {
-            setSelectedJobId(val);
-            const found = jobs.find((j) => j.id === val);
-            setJobDescription(found?.jd_text || '');
-          }}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select job (JD)" />
-            </SelectTrigger>
-            <SelectContent>
-              {jobs.map((job) => (
-                <SelectItem key={job.id} value={job.id}>{job.title || 'Job'}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-muted-foreground">Pick resume + job before editing</p>
-        </div>
+      <div className="flex items-center justify-between">
         <div className="flex gap-2">
           {saveState === 'error' && (
             <Button variant="destructive" onClick={handleSave}>
@@ -298,46 +273,83 @@ const ResumeEditor: React.FC = () => {
             {isValidating ? 'Validating...' : 'Validate current version'}
           </Button>
         </div>
-      </div>
+        <Collapsible open={inputsOpen} onOpenChange={setInputsOpen} className="w-full lg:w-auto">
+          <div className="flex items-center justify-end gap-2">
+            <p className="text-xs text-muted-foreground">Resume & JD inputs</p>
+            <CollapsibleTrigger asChild>
+              <Button size="sm" variant="outline">{inputsOpen ? 'Hide' : 'Show'}</Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="mt-3 space-y-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+              <Select value={selectedResumeId || ''} onValueChange={setSelectedResumeId}>
+                <SelectTrigger className="w-full lg:w-64">
+                  <SelectValue placeholder="Select resume" />
+                </SelectTrigger>
+                <SelectContent>
+                  {resumes.map((resume) => (
+                    <SelectItem key={resume.id} value={resume.id}>{resume.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedJobId || ''} onValueChange={(val) => {
+                setSelectedJobId(val);
+                const found = jobs.find((j) => j.id === val);
+                setJobDescription(found?.jd_text || '');
+              }}>
+                <SelectTrigger className="w-full lg:w-64">
+                  <SelectValue placeholder="Select job (JD)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobs.map((job) => (
+                    <SelectItem key={job.id} value={job.id}>{job.title || 'Job'}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">Pick resume + job before editing</p>
+            </div>
 
-      <Card className="p-4 space-y-3">
-        <p className="text-sm font-semibold text-foreground">Upload a resume (docx/txt/md)</p>
-        <p className="text-xs text-muted-foreground">If you have no resume yet or want a new one, upload and we’ll parse it.</p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <Input type="file" accept=".docx,.txt,.md" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
-            <Input
-              placeholder="Resume name"
-              value={uploadResumeName}
-              onChange={(e) => setUploadResumeName(e.target.value)}
-            />
-          </div>
-          <div className="flex items-end gap-2">
-            <Button onClick={handleUploadResume} disabled={uploading || !uploadFile} className="w-full md:w-auto">
-              {uploading ? 'Uploading...' : 'Upload & Parse'}
-            </Button>
-            <p className="text-xs text-muted-foreground">Supported: docx, txt, md.</p>
-          </div>
-        </div>
-      </Card>
+            <Card className="p-4 space-y-3">
+              <p className="text-sm font-semibold text-foreground">Upload a resume (docx/txt/md)</p>
+              <p className="text-xs text-muted-foreground">If you have no resume yet or want a new one, upload and we’ll parse it.</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Input type="file" accept=".docx,.txt,.md" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
+                  <Input
+                    placeholder="Resume name"
+                    value={uploadResumeName}
+                    onChange={(e) => setUploadResumeName(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button onClick={handleUploadResume} disabled={uploading || !uploadFile} className="w-full md:w-auto">
+                    {uploading ? 'Uploading...' : 'Upload & Parse'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Supported: docx, txt, md.</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-4 space-y-3">
+              <p className="text-sm font-semibold text-foreground">Job Description</p>
+              <p className="text-xs text-muted-foreground">Used for suggestions and ATS validation</p>
+              <textarea
+                className="w-full rounded-md border border-border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                rows={5}
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Paste or edit the job description here"
+              />
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
 
       <div className="text-xs text-muted-foreground">
         {saveState === 'saving' && 'Saving...'}
         {saveState === 'saved' && 'Saved'}
         {saveState === 'error' && 'Save failed'}
       </div>
-
-      <Card className="p-4 space-y-3">
-        <p className="text-sm font-semibold text-foreground">Job Description</p>
-        <p className="text-xs text-muted-foreground">Used for suggestions and ATS validation</p>
-        <textarea
-          className="w-full rounded-md border border-border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          rows={5}
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          placeholder="Paste or edit the job description here"
-        />
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <Card className="lg:col-span-8 p-4">

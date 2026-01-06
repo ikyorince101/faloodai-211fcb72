@@ -97,6 +97,17 @@ const InteractiveEditor: React.FC<InteractiveEditorProps> = ({
   });
 
   const suggestionStyles = `
+    .ck.ck-editor__editable_inline {
+      min-height: 620px;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    .ck.ck-editor__main {
+      background: transparent;
+    }
+    .ck.ck-toolbar {
+      border-radius: 12px 12px 0 0;
+    }
     .suggestion-chip {
       display: inline-flex;
       align-items: center;
@@ -135,7 +146,7 @@ const InteractiveEditor: React.FC<InteractiveEditorProps> = ({
       </div>
 
       <CKEditor
-        editor={ClassicEditor}
+        editor={ClassicEditor as any}
         data={editorData}
         onReady={(editor) => {
           editorRef.current = editor;
