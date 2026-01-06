@@ -101,12 +101,25 @@ const InteractiveEditor: React.FC<InteractiveEditorProps> = ({
       min-height: 620px;
       font-size: 16px;
       line-height: 1.55;
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      padding: 16px;
+      border-radius: 0 0 12px 12px;
     }
     .ck.ck-editor__main {
       background: transparent;
     }
     .ck.ck-toolbar {
       border-radius: 12px 12px 0 0;
+      background: hsl(var(--card));
+      border-color: hsl(var(--border));
+    }
+    .ck.ck-editor__editable_inline p,
+    .ck.ck-editor__editable_inline li {
+      color: hsl(var(--foreground));
+    }
+    .ck.ck-editor__editable_inline a {
+      color: hsl(var(--primary));
     }
     .suggestion-chip {
       display: inline-flex;
