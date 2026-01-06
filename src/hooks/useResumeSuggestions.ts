@@ -87,10 +87,10 @@ export const useGenerateResumeSuggestions = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ resumeId, docText }: { resumeId: string; docText: string; }) => {
+    mutationFn: async ({ resumeId, docText, jobDescription }: { resumeId: string; docText: string; jobDescription?: string; }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase.functions.invoke('generate-resume-suggestions', {
-        body: { resumeId, docText },
+        body: { resumeId, docText, jobDescription },
       });
       if (error) throw error;
       return validateSuggestions(data) as EditorSuggestionPayload[];

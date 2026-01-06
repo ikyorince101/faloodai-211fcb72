@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { docText, resumeId } = await req.json();
+    const { docText, resumeId, jobDescription } = await req.json();
 
     if (!docText || typeof docText !== "string") {
       return new Response(JSON.stringify({ error: "docText required" }), {
@@ -55,7 +55,7 @@ Rules:
 - Keep suggestions small and precise.
 - Do not include narrative or markdown.`;
 
-    const userPrompt = `Current resume text:\n${docText}\nResume Id: ${resumeId || "unknown"}`;
+    const userPrompt = `Current resume text:\n${docText}\nResume Id: ${resumeId || "unknown"}\nJob Description (for relevance):\n${jobDescription || 'Not provided'}`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

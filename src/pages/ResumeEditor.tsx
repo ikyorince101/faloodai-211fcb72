@@ -13,6 +13,7 @@ import { runEditorRuntimeChecks } from '@/utils/editorRuntimeChecks';
 import { supabase } from '@/integrations/supabase/client';
 import { resumeSampleText } from '@/fixtures/resumeSample';
 import { Json } from '@/integrations/supabase/types';
+import { useJobs } from '@/hooks/useJobs';
 
 const textToDocJson = (text: string) => ({
   type: 'doc',
@@ -42,7 +43,10 @@ interface ATSReport {
 
 const ResumeEditor: React.FC = () => {
   const { data: resumes = [] } = useListResumesForEditor();
+  const { data: jobs = [] } = useJobs();
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [jobDescription, setJobDescription] = useState('');
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<number | undefined>(undefined);
@@ -56,6 +60,13 @@ const ResumeEditor: React.FC = () => {
       setSelectedResumeId(resumes[0].id);
     }
   }, [resumes, selectedResumeId]);
+
+  useEffect(() => {
+    if (!selectedJobId && jobs.length > 0) {
+      setSelectedJobId(jobs[0].id);
+      setJobDescription(jobs[0].jd_text || '');
+    }
+  }, [jobs, selectedJobId]);
 
   const { data: editorDoc } = useResumeEditorDoc(selectedResumeId);
   const initialText = useMemo(() => extractPlainTextFromDoc(editorDoc?.doc_json as Record<string, unknown> | null), [editorDoc]);
@@ -118,7 +129,8 @@ const ResumeEditor: React.FC = () => {
 
   const handleGenerate = async () => {
     if (!selectedResumeId) return;
-    const result = await generate.mutateAsync({ resumeId: selectedResumeId, docText: docText || '' });
+    const jd = jobDescription || jobs.find(j => j.id === selectedJobId)?.jd_text || '';
+    const result = await generate.mutateAsync({ resumeId: selectedResumeId, docText: docText || '', jobDescription: jd });
     await upsertSuggestions.mutateAsync({ resumeId: selectedResumeId, suggestions: result });
     toast.success('Suggestions ready');
   };
@@ -142,8 +154,9 @@ const ResumeEditor: React.FC = () => {
     setIsValidating(true);
     setAtsReport(null);
     try {
+      const jd = jobDescription || jobs.find(j => j.id === selectedJobId)?.jd_text || '';
       const { data, error } = await supabase.functions.invoke('ats-validate', {
-        body: { resumeContent: { text: docText }, jobDescription: '' },
+        body: { resumeContent: { text: docText }, jobDescription: jd },
       });
       if (error) throw error;
       setAtsReport(data as ATSReport);
@@ -169,7 +182,21 @@ const ResumeEditor: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
-          <p className="text-sm text-muted-foreground">Rich editor with inline suggestions</p>
+          <Select value={selectedJobId || ''} onValueChange={(val) => {
+            setSelectedJobId(val);
+            const found = jobs.find((j) => j.id === val);
+            setJobDescription(found?.jd_text || '');
+          }}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Select job (JD)" />
+            </SelectTrigger>
+            <SelectContent>
+              {jobs.map((job) => (
+                <SelectItem key={job.id} value={job.id}>{job.title || 'Job'}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">Pick resume + job before editing</p>
         </div>
         <div className="flex gap-2">
           {saveState === 'error' && (
@@ -178,10 +205,10 @@ const ResumeEditor: React.FC = () => {
             </Button>
           )}
           <Button variant="outline" onClick={handleSave} disabled={saveState === 'saving'}> {saveState === 'saving' ? 'Saving...' : 'Save'} </Button>
-          <Button onClick={handleGenerate} disabled={generate.isPending || !docText}>
+          <Button onClick={handleGenerate} disabled={generate.isPending || !docText || !jobDescription}>
             {generate.isPending ? 'Generating...' : 'Generate Suggestions'}
           </Button>
-          <Button variant="secondary" onClick={handleValidateATS} disabled={isValidating}>
+          <Button variant="secondary" onClick={handleValidateATS} disabled={isValidating || !jobDescription}>
             {isValidating ? 'Validating...' : 'Validate current version'}
           </Button>
         </div>
@@ -192,6 +219,18 @@ const ResumeEditor: React.FC = () => {
         {saveState === 'saved' && 'Saved'}
         {saveState === 'error' && 'Save failed'}
       </div>
+
+      <Card className="p-4 space-y-3">
+        <p className="text-sm font-semibold text-foreground">Job Description</p>
+        <p className="text-xs text-muted-foreground">Used for suggestions and ATS validation</p>
+        <textarea
+          className="w-full rounded-md border border-border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          rows={5}
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
+          placeholder="Paste or edit the job description here"
+        />
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <Card className="lg:col-span-8 p-4">
