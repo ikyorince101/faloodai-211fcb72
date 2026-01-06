@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import { MotionProvider } from "@/contexts/MotionContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -42,6 +43,7 @@ const App = () => (
           <AuthProvider>
             <Toaster />
             <Sonner />
+            <VercelAnalytics />
             <BrowserRouter>
               <Routes>
                 {/* Public Marketing Pages */}
