@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useListResumesForEditor, useResumeEditorDoc, useSaveEditorDoc } from '@/hooks/useResumeEditor';
 import InteractiveEditor from '@/components/resume/InteractiveEditor';
 import SuggestionsPanel from '@/components/resume/SuggestionsPanel';
@@ -14,11 +15,45 @@ import { supabase } from '@/integrations/supabase/client';
 import { resumeSampleText } from '@/fixtures/resumeSample';
 import { Json } from '@/integrations/supabase/types';
 import { useJobs } from '@/hooks/useJobs';
+import { useCreateResume } from '@/hooks/useResumes';
 
 const textToDocJson = (text: string) => ({
   type: 'doc',
   content: text.split('\n').map((line) => ({ type: 'paragraph', text: line })),
 });
+
+const mapParsedToContent = (parsed: Record<string, any>): Json => {
+  const experience = Array.isArray(parsed?.workHistory)
+    ? parsed.workHistory.map((w: any) => ({
+        title: w.title || w.role || '',
+        company: w.company || '',
+        period: [w.startDate, w.endDate].filter(Boolean).join(' - '),
+        description: w.description || (Array.isArray(w.highlights) ? w.highlights.join('; ') : ''),
+      }))
+    : [];
+
+  const skills = Array.isArray(parsed?.skills)
+    ? parsed.skills.map((s: any) => s.name || s)
+    : [];
+
+  const projects = Array.isArray(parsed?.projects)
+    ? parsed.projects.map((p: any) => ({
+        name: p.name || '',
+        description: p.description || '',
+      }))
+    : [];
+
+  return {
+    name: parsed.fullName || 'Your Name',
+    email: parsed.email || '',
+    location: parsed.location || '',
+    summary: parsed.summary || 'Add a professional summary.',
+    experience,
+    skills,
+    projects,
+    generatedAt: new Date().toISOString(),
+  } as Json;
+};
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -47,6 +82,9 @@ const ResumeEditor: React.FC = () => {
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobDescription, setJobDescription] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadResumeName, setUploadResumeName] = useState('');
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<number | undefined>(undefined);
@@ -54,6 +92,7 @@ const ResumeEditor: React.FC = () => {
   const [isValidating, setIsValidating] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didInitRef = useRef(false);
+  const createResume = useCreateResume();
 
   useEffect(() => {
     if (!selectedResumeId && resumes.length > 0) {
@@ -168,10 +207,57 @@ const ResumeEditor: React.FC = () => {
     }
   };
 
+  const handleUploadResume = async () => {
+    if (!uploadFile) {
+      toast.error('Choose a file to upload');
+      return;
+    }
+    const resumeName = uploadResumeName.trim() || uploadFile.name;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+
+      const { data: parsedDoc, error: docError } = await supabase.functions.invoke('parse-document', {
+        body: formData,
+      });
+      if (docError || !parsedDoc?.success) {
+        throw new Error(parsedDoc?.error || docError?.message || 'Failed to parse document');
+      }
+
+      const resumeText: string = parsedDoc.text;
+
+      const { data: parsedResume, error: parseErr } = await supabase.functions.invoke('parse-resume', {
+        body: { resumeText },
+      });
+      if (parseErr) throw parseErr;
+
+      const content = mapParsedToContent(parsedResume as Record<string, any>);
+
+      const created = await createResume.mutateAsync({
+        name: resumeName,
+        job_id: selectedJobId || null,
+        content,
+        ats_score: null,
+        ats_report: null,
+      });
+
+      setSelectedResumeId(created.id);
+      setDocText(resumeText);
+      setUploadFile(null);
+      setUploadResumeName('');
+      toast.success('Resume uploaded and parsed');
+    } catch (err: any) {
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Select value={selectedResumeId || ''} onValueChange={setSelectedResumeId}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select resume" />
@@ -213,6 +299,27 @@ const ResumeEditor: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <Card className="p-4 space-y-3">
+        <p className="text-sm font-semibold text-foreground">Upload a resume (docx/txt/md)</p>
+        <p className="text-xs text-muted-foreground">If you have no resume yet or want a new one, upload and we’ll parse it.</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Input type="file" accept=".docx,.txt,.md" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
+            <Input
+              placeholder="Resume name"
+              value={uploadResumeName}
+              onChange={(e) => setUploadResumeName(e.target.value)}
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button onClick={handleUploadResume} disabled={uploading || !uploadFile} className="w-full md:w-auto">
+              {uploading ? 'Uploading...' : 'Upload & Parse'}
+            </Button>
+            <p className="text-xs text-muted-foreground">Supported: docx, txt, md.</p>
+          </div>
+        </div>
+      </Card>
 
       <div className="text-xs text-muted-foreground">
         {saveState === 'saving' && 'Saving...'}
